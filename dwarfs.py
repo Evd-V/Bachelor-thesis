@@ -161,12 +161,26 @@ class initial_conds(object):
 class calculate_prop(object):
     """ Class to find the position and velocity for dwarf galaxies """
     
-    def __init__(self, galName):
+    def __init__(self, galName, fZhao, fBosch):
         """ Initialization """
         
         self.name = galName                             # Name of dwarf galaxy
         self.initCond = initial_conds()                 # Initial conditions
+        
+        galaxies = self.dwarf_object(fZhao, fBosch)     # Initializing dwarf gal.
+
+        self.zhaoGal = galaxies[0]                      # Zhao model
+        self.boschGal = galaxies[1]                     # Bosch model
     
+    
+    def dwarf_object(self, fZhao, fBosch):
+        """ Initializing dwarf galaxy object """
+
+        galData = self.load_dict()                          # Loading data
+        zhaoGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
+        boschGal = dwarf_galaxy("Bosch", galData[0], galData[1], fBosch)
+
+        return zhaoGal, boschGal
     
     def dict_init(self):
         """ Dictionary containing names corresponding to initial conditions"""
@@ -193,12 +207,61 @@ class calculate_prop(object):
         
         galData = self.load_dict()
         
-        zhaoGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
+        zhaoGal = self.zhaoGal
         zhaoP, zhaoV = zhaoGal.integ_time(timeRange)
         zhaoPos, zhaoVel = zhaoGal.dist_time_vel(zhaoP, zhaoV)
         
-        boschGal = dwarf_galaxy("Bosch", galData[0], galData[1], fBosch)
+        boschGal = self.boschGal
         boschP, boschV = boschGal.integ_time(timeRange)
         boschPos, boschVel = boschGal.dist_time_vel(boschP, boschV)
         
         return zhaoPos, zhaoVel, boschPos, boschVel
+    
+        def orbit_tindep(self, tRange, fZhao, z=0, *args):
+        """ Find orbit for time independent potential """
+
+        galData = self.load_dict()                          # Loading data
+
+            # Creating dwarf galaxy and integrating orbit
+        tIndepGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
+        sPos, sVel = tIndepGal.time_indep(tRange, z=z, *args)
+        fullPos, fullVel = tIndepGal.dist_time_vel(sPos, sVel)
+
+        return sPos, sVel, fullPos, fullVel
+    
+    def orbit_properties(self, fullPos):
+        """ Calculate some time independent orbit properties """
+
+        kpcPos = ge.conv_m_kpc(fullPos)             # Position in kpc
+
+        rPeri = min(kpcPos)                         # Pericenter (kpc)
+        rApo = max(kpcPos)                          # Apocenter (kpc)
+
+        ecc = (rApo - rPeri) / (rApo + rPeri)       # Eccentricity
+
+        return rPeri, rApo, ecc
+
+    def energy(self, potName, tRange, fullPos, fullVel):
+        """ Calculate kinetic and potential energies """
+
+        eKin = .5 * np.power(fullVel, 2)            # Kinetic energy
+
+            # Potential energy
+        if potName == "Zhao":
+            ePot = self.zhaoGal.pot_energy(tRange, fullPos)
+        elif potName == "Bosch":
+            ePot = self.boschGal.pot_energy(tRange, fullPos)
+        else:
+            raise ValueError("Invalid potential model")
+
+        return eKin, ePot
+    
+    def energy_tindep(self, fullPos, fullVel, z=0):
+        """ Energies for time independent potential """
+
+        eKin = .5 * np.power(fullVel, 2)            # Kinetic energy
+
+            # E_pot is independent of model here
+        ePot = self.zhaoGal.tindep_pot(fullPos, z=z)
+        
+        return eKin, ePot
