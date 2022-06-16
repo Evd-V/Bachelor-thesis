@@ -46,8 +46,7 @@ class zhao(object):
     
     def rs_rhos_at_z(self, zV):
         """ Find scale length and density at r_s at specific z value """
-#         zInd = ge.find_closest(self.red, zV)[0]     # Correct z index
-        zInd = self.find_z_ind(zV)
+        zInd = self.find_z_ind(zV)                      # Correct z index
         return self.rS[zInd], self.rhoS[zInd]
     
     def mass_at_r(self, zV, r):
@@ -93,14 +92,24 @@ class zhao(object):
         rS = self.rS                                        # r_s
         
         zInd = self.find_z_ind(zV)                          # Finding correct z
-        selrS, selrhoS = rS[zInd], rhoS[zInd]               # Slicing lists
         
         if type(zInd) != np.ndarray:                        # Single z value
+            
+               # Need to interpolate due to coarse grid
+            interpRS = interp1d(self.red, self.rS)
+            selrS = interpRS(zV)
+
+            interpRhoS = interp1d(self.red, self.rhoS)
+            selrhoS = interpRhoS(zV)
+            
             part1 = -16 * np.pi * G * selrhoS * selrS * selrS
             part2 = np.log(1 + r/selrS) / (r/selrS)
+            
             return part1 * part2
         
             # Multiple z values
+        selrS, selrhoS = rS[zInd], rhoS[zInd]                   # Slicing lists
+        
         part1 = -16 * np.pi * G * selrhoS * selrS * selrS       # First part
         part2 = [np.log(1 + r/rsV) / (r/rsV) for rsV in selrS]  # Second part
         

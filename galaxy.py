@@ -132,20 +132,23 @@ class dwarf_galaxy(object):
         
         return np.asarray(pNorm), np.asarray(vNorm)
     
-    
-    def pot_energy(self, tRange, tPos, *args):
+    def pot_energy(self, tRange, pos):
         """ Gravitational potential energy per unit mass """
-        
-            # Interpolate mass and redshift values
-        normTime = self.norm_time(tRange)
-        corrRed, corrMass = lf.correct_values(self.red, self.mass, normTime)
-        
-        tDist = np.asarray([np.linalg.norm(pos) for pos in tPos])   # Distance
-        
-        prof = self.profile
-        pot = prof.pot_z_r(corrRed, tDist, *args)
-        
-        return pot
+
+            # Converting time range to years
+        yearRange = ge.conv_sec_year(-tRange)               # Time in years
+        corrRed = self.correct_red(yearRange)               # Corresponding z
+
+        profile = self.prof                                 # Loading profile
+
+        fullPot = [profile.pot_nfw(zV, pos[ind]) 
+                   for ind, zV in enumerate(corrRed[:-1])]
+
+        return fullPot
+    
+    def tindep_pot(self, pos, z=0):
+        """ Time independent potential energy """
+        return self.prof.pot_nfw(z, pos)
     
     def kin_energy(self, tVel, *args):
         """ Kinetic energy per unit mass """
