@@ -7,6 +7,8 @@ def spher_to_cart(spher):
     """ From spherical to Cartesian coordinates """
 
     r, theta, phi = spher                                   # Unpacking
+    theta = np.radians(theta)
+    phi = np.radians(phi)
 
     x = r * np.cos(phi) * np.sin(theta)                     # x
     y = r * np.sin(phi) * np.sin(theta)                     # y
@@ -146,7 +148,7 @@ def conv_vel_frame(vSpher, pSpher):
     """ Convert velocity in spherical coorinates to cartesian """
 
     vR, vTheta, vPhi = vSpher                       # Unpacking velocity
-    r, theta, phi = pSpher              # Unpacking position
+    r, theta, phi = pSpher                          # Unpacking position
     theta, phi = np.radians(theta), np.radians(phi)
 
     sT, cT = np.sin(theta), np.cos(theta)           # sin & cos for theta

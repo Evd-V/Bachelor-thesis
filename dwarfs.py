@@ -1,14 +1,17 @@
+from re import A
 import numpy as np
 from scipy.interpolate import interp1d
+from astropy.constants import pc, kpc
 import astropy.units as u
+import matplotlib
 from matplotlib.pyplot import figure, show
 
 import general as ge
 import nfw_profile as nf
 import mass_change as mc
 import initial_cond as ic
+import derivatives as dv
 from galaxy import dwarf_galaxy
-
 
 # --------------------- #
 #  Initial conditions   #
@@ -17,12 +20,12 @@ from galaxy import dwarf_galaxy
 class initial_conds(object):
     """ Class containging the initial conditions for dwarf galaxies """
 
-    def __init__(self):
+    def __init__(self, sig=None):
         """ Initializing """
 
             # Data of galaxies
-        self.draco = self.draco()                       # Draco I
-        self.sculp = self.sculptor()                    # Sculptor
+        self.draco = self.draco(sigma=sig)              # Draco I
+        self.sculp = self.sculptor(sigma=sig)           # Sculptor
         self.ursa = self.ursa_minor()                   # Ursa minor
         self.sext = self.sextans()                      # Sextans I
         self.car = self.carina()                        # Carina I
@@ -41,7 +44,7 @@ class initial_conds(object):
         return p0, v0
 
 
-    def draco(self):
+    def draco(self, sigma=None):
         """ Initial conditions for the Draco I dwarf galaxy """
 
             # Data by gaia
@@ -51,20 +54,27 @@ class initial_conds(object):
         dmDra = 19.57                                   # Distance modulus
 
         raDra = 260.051625 * u.deg                      # Right ascension
-        decDra = (57 + 54/60 + 55/3600) * u.deg         # Declination
+        decDra = 57.915361 * u.deg                      # Declination
 
-        p0Dra, v0Dra = self.find_cond(pmRaDra, pmDecDra, rVelDra, dmDra, raDra,
-                                      decDra)
+        err = [0.02 * u.mas/u.yr, 0.02*u.mas/u.yr, 0*u.km/u.s, .16]
 
-        pSpher = (ge.conv_m_kpc(81.8), 55.3, 273.3)     # Starting pos in sph.
-        vSpher = (-97.4*1e3, 136.9*1e3, -66.2*1e3)      # Startign vel in sph.
+        if sigma == "+":
+            p0Dra, v0Dra = self.find_cond(pmRaDra+err[0], pmDecDra+err[1], 
+                                          rVelDra+err[2], dmDra+err[3], raDra,
+                                          decDra)
 
-        pDra = p0Dra * 3.0857e19                      # Starting position in m
-        vDra = ic.conv_vel_frame(vSpher, pSpher)      # Starting velocity in m/s
+        elif sigma == "-":
+            p0Dra, v0Dra = self.find_cond(pmRaDra-err[0], pmDecDra-err[1], 
+                                          rVelDra-err[2], dmDra-err[3], raDra,
+                                          decDra)                
 
-        return pDra, vDra
+        else:
+            p0Dra, v0Dra = self.find_cond(pmRaDra, pmDecDra, rVelDra, dmDra, raDra,
+                                        decDra)
+        
+        return p0Dra * kpc.value, v0Dra * 1e3
 
-    def sculptor(self):
+    def sculptor(self, sigma=None):
         """ Initial conditions for the Draco I dwarf galaxy """
 
             # Initial conditions for Sculptor dwarf
@@ -76,16 +86,23 @@ class initial_conds(object):
         raScu = 15.038984 * u.deg                       # Right ascension
         decScu = -33.709029 * u.deg                     # Declination
         
-        p0Scu, v0Scu = self.find_cond(pmRaScu, pmDecScu, rVelScu, dmScu, raScu,
-                                      decScu)
-        
-        pScSpher = (ge.conv_m_kpc(86.0), 172.7, 62.7)   # Starting pos in sph.
-        vScSpher = (75.9*1e3, 154.2*1e3, -54.3*1e3)     # Startign vel in sph.
-        
-        pScu = p0Scu * 3.0857e19                        # Starting position in m
-        vScu = ic.conv_vel_frame(vScSpher, pScSpher)    # Starting velocity in m/s
-    
-        return pScu, vScu
+        err = [0.019 * u.mas/u.yr, 0.019*u.mas/u.yr, 0*u.km/u.s, .13]
+
+        if sigma == "+":
+            p0Scu, v0Scu = self.find_cond(pmRaScu+err[0], pmDecScu+err[1], 
+                                          rVelScu+err[2], dmScu+err[3], raScu,
+                                          decScu)
+
+        elif sigma == "-":
+            p0Scu, v0Scu = self.find_cond(pmRaScu-err[0], pmDecScu-err[1], 
+                                          rVelScu-err[2], dmScu-err[3], raScu,
+                                          decScu)                
+
+        else:
+            p0Scu, v0Scu = self.find_cond(pmRaScu, pmDecScu, rVelScu, dmScu, raScu,
+                                        decScu)
+            
+        return p0Scu * kpc.value, v0Scu * 1e3
     
     def ursa_minor(self):
         """ Initial conditiosn for the Ursa minor dwarf galaxy """
@@ -101,14 +118,8 @@ class initial_conds(object):
         
         p0Urs, v0Urs = self.find_cond(pmRaUrs, pmDecUrs, rVelUrs, dmUrs, raUrs,
                                       decUrs)
-        
-        pUrSpher = (ge.conv_kpc_m(77.8), 46.5, 293.0)   # Starting pos in sph.
-        vUrSpher = (-76.9*1e3, 143.9*1e3, -31.9*1e3)    # Startign vel in sph.
-        
-        pUrs = p0Urs * 3.0857e19                        # Starting pos in m
-        vUrs = ic.conv_vel_frame(vUrSpher, pUrSpher)    # Starting vel in m/s
-        
-        return pUrs, vUrs
+
+        return p0Urs * kpc.value, v0Urs*1e3
     
     def carina(self):
         """ Initial conditions for the Carina dwarf galaxy """
@@ -124,54 +135,41 @@ class initial_conds(object):
         
         p0Car, v0Car = self.find_cond(pmRaCar, pmDecCar, rVelCar, dmCar, raCar,
                                       decCar)
-        
-        pCaSpher = (ge.conv_kpc_m(107.6), 111.9, 75.5)   # Starting pos in sph.
-        vCaSpher = (0.8*1e3, -191.6*1e3, -8.6*1e3)     # Startign vel in sph.
-        
-        pCar = p0Car * 3.0857e19                        # Starting pos in m
-        vCar = ic.conv_vel_frame(vCaSpher, pCaSpher)    # Starting vel in m/s
-        
-        return pCar, vCar
+
+        return p0Car * kpc.value, v0Car * 1e3
     
     
     def sextans(self):
         """ Initial conditions for the Sextans I dwarf galaxy """
         
             # Initial conditions for Sextans
-        pmRaSxt = -0.403 * u.mas/u.yr                    # RA in mas/yr
-        pmDecSxt = 0.029 * u.mas/u.yr                  # Declination in mas/yr
+        pmRaSxt = -0.403 * u.mas/u.yr                   # RA in mas/yr
+        pmDecSxt = 0.029 * u.mas/u.yr                   # Declination in mas/yr
         rVelSxt = 224.9 * u.km/u.s                      # Radial velocity (km/s)
         dmSxt = 19.89                                   # Distance modulus
         
-        raSxt = 153.262319 * u.deg                       # Right ascension
-        decSxt = -1.614602 * u.deg                     # Declination
+        raSxt = 153.262319 * u.deg                      # Right ascension
+        decSxt = -1.614602 * u.deg                      # Declination
         
         p0Sxt, v0Sxt = self.find_cond(pmRaSxt, pmDecSxt, rVelSxt, dmSxt, raSxt,
                                       decSxt)
-        
-        pSxSpher = (ge.conv_kpc_m(98.1), 49.3, 57.9)   # Starting pos in sph.
-        vSxSpher = (83.3*1e3, -8.8*1e3, -219.7*1e3)     # Startign vel in sph.
-        
-        pSxt = p0Sxt * 3.0857e19                        # Starting pos in m
-        vSxt = ic.conv_vel_frame(vSxSpher, pSxSpher)    # Starting vel in m/s
-        
-        return pSxt, vSxt
+                
+        return p0Sxt * kpc.value, v0Sxt * 1e3
 
 
 class calculate_prop(object):
     """ Class to find the position and velocity for dwarf galaxies """
     
-    def __init__(self, galName, fZhao, fBosch):
+    def __init__(self, galName, fZhao, fBosch, sig=None):
         """ Initialization """
         
         self.name = galName                             # Name of dwarf galaxy
-        self.initCond = initial_conds()                 # Initial conditions
-        
+        self.initCond = initial_conds(sig=sig)          # Initial conditions
+
         galaxies = self.dwarf_object(fZhao, fBosch)     # Initializing dwarf gal.
 
         self.zhaoGal = galaxies[0]                      # Zhao model
         self.boschGal = galaxies[1]                     # Bosch model
-    
     
     def dwarf_object(self, fZhao, fBosch):
         """ Initializing dwarf galaxy object """
@@ -181,7 +179,16 @@ class calculate_prop(object):
         boschGal = dwarf_galaxy("Bosch", galData[0], galData[1], fBosch)
 
         return zhaoGal, boschGal
-    
+
+    def red_time(self):
+        """ Retrieve redshift and time """
+
+        zhaoGal = self.zhaoGal
+        boschGal = self.boschGal
+
+        return zhaoGal.red, zhaoGal.time, boschGal.red, boschGal.time
+
+
     def dict_init(self):
         """ Dictionary containing names corresponding to initial conditions"""
         
@@ -202,28 +209,31 @@ class calculate_prop(object):
         """ Load correct dictionary data """
         return self.dict_init()[self.name]
     
-    def pos_vel(self, timeRange, fZhao, fBosch):
+    def pos_vel(self, timeRange):
         """ Find full position and velocity for dwarf """
         
         galData = self.load_dict()
         
+        # zhaoGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
         zhaoGal = self.zhaoGal
         zhaoP, zhaoV = zhaoGal.integ_time(timeRange)
         zhaoPos, zhaoVel = zhaoGal.dist_time_vel(zhaoP, zhaoV)
         
         boschGal = self.boschGal
+        # boschGal = dwarf_galaxy("Bosch", galData[0], galData[1], fBosch)
         boschP, boschV = boschGal.integ_time(timeRange)
         boschPos, boschVel = boschGal.dist_time_vel(boschP, boschV)
         
         return zhaoPos, zhaoVel, boschPos, boschVel
     
-        def orbit_tindep(self, tRange, fZhao, z=0, *args):
+    def orbit_tindep(self, tRange, fZhao, z=0, *args):
         """ Find orbit for time independent potential """
 
         galData = self.load_dict()                          # Loading data
 
             # Creating dwarf galaxy and integrating orbit
-        tIndepGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
+        # tIndepGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
+        tIndepGal = self.zhaoGal
         sPos, sVel = tIndepGal.time_indep(tRange, z=z, *args)
         fullPos, fullVel = tIndepGal.dist_time_vel(sPos, sVel)
 
@@ -265,3 +275,282 @@ class calculate_prop(object):
         ePot = self.zhaoGal.tindep_pot(fullPos, z=z)
         
         return eKin, ePot
+
+
+# --------------------- #
+#   Orbit integration   #
+# --------------------- #
+
+def main():
+
+        # File names for models
+    # fZhao = "./mandc_m125e12/mandcoutput.m125e12"
+    fZhao = "./mandc_m125_final/mandcoutput.m125_final"
+    # fZhao = "./mandc_m15/mandcoutput.m15"
+    # fZhao = "./mandc_m8.1/mandcoutput.m8.1"
+    # fZhao = "./mandc_m14.1/mandcoutput.m14.1"
+    # fZhao = "./mandc_m125_Asger/mandcoutput.asger"
+
+    # fBosch = "./getPWGH/PWGH_average_125e12_test.dat"
+    fBosch = "./getPWGH/PWGH_median.dat"
+    
+        # Time integration range
+    timeRange = np.linspace(-ge.conv_year_sec(1e7), -ge.conv_year_sec(13.5e9), int(1e3))
+    yearRange = ge.conv_sec_year(timeRange) / 1e9                   # Time in Gyr
+
+    t0, tS, tF = 13.8, 1e-2, 13.5
+    adjRange = np.linspace(t0-tF, t0-tS, int(1e3))[::-1]            # Time in Gyr
+
+    
+        # Draco
+    draco = calculate_prop("Draco", fZhao, fBosch)
+    draZP, draZV, draBP, draBV = draco.pos_vel(timeRange)
+
+    dracoPlus = calculate_prop("Draco", fZhao, fBosch, sig="+")
+    draPZP, draPZV = dracoPlus.pos_vel(timeRange)[0:2]
+
+    dracoMin = calculate_prop("Draco", fZhao, fBosch, sig="-")
+    draMZP, draMZV = dracoMin.pos_vel(timeRange)[0:2]
+
+    draTime = (2.9, 4.6)
+
+    eDraZ = draco.energy("Zhao", timeRange, draZP[:-1], draZV[:-1])
+    eDraB = draco.energy("Bosch", timeRange, draBP[:-1], draBV[:-1])
+    
+            # Time independent
+    draSP, draSV = draco.orbit_tindep(timeRange, fZhao)[2:]
+    eKinS, ePotS = draco.energy_tindep(draSP[:-1], draSV[:-1])
+    # staticProp = draco.orbit_properties(draSP[:-1])
+
+            # Derivatives
+    histDraco, derivDraco = dv.take_deriv("Draco")
+    edgesDraco = dv.stair_edges(derivDraco[0], histDraco[0])
+
+        # Printing properties 
+    # print(f"Pericenter = {staticProp[0]}")
+    # print(f"Apocenter = {staticProp[1]}")
+    # print(f"Eccentricity = {staticProp[2]}")
+
+    # minInd = [ge.find_closest(adjRange, dT)[0] for dT in draTime]
+    # minVal = min(draZP[minInd[1]:minInd[0]])
+    # anotherInd = ge.find_closest(draZP, minVal)[0]
+
+    # print(ge.conv_m_kpc(minVal))
+    # print(adjRange[anotherInd])
+
+        # Sculptor
+    sculptor = calculate_prop("Sculptor", fZhao, fBosch)
+    scuZP, scuZV, scuBP, scuBV = sculptor.pos_vel(timeRange)
+    scuTime = (3.4, 6.2)
+
+    scuSP, scuSV = sculptor.orbit_tindep(timeRange, fZhao)[2:]
+
+    scuPlus = calculate_prop("Sculptor", fZhao, fBosch, sig="+")
+    scuPZP, scuPZV = scuPlus.pos_vel(timeRange)[0:2]
+
+    scuMin = calculate_prop("Sculptor", fZhao, fBosch, sig="-")
+    scuMZP, scuMZV = scuMin.pos_vel(timeRange)[0:2]
+
+            # Derivatives
+    histScu, derivScu = dv.take_log_deriv("Sculptor")
+    edgesScu = dv.stair_edges(derivScu[0], histScu[0])
+    
+        # Carina
+    carina = calculate_prop("Carina", fZhao, fBosch)
+    carZP, carZV, carBP, carBV = carina.pos_vel(timeRange)
+    car1Time = (5, 6)
+    car2Time = (9, 12.75)
+
+    carSP, carSV = carina.orbit_tindep(timeRange, fZhao)[2:]
+
+            # Derivatives
+    histCar, derivCar = dv.take_log_deriv("Carina")
+    edgesCar = dv.stair_edges(derivCar[0], histCar[0])
+    
+        # Sextans
+    sextans = calculate_prop("Sextans", fZhao, fBosch)
+    sxtZP, sxtZV, sxtBP, sxtBV = sextans.pos_vel(timeRange)
+    
+        # Ursa minor
+    ursaMin = calculate_prop("Ursa minor", fZhao, fBosch)
+    ursZP, ursZV, ursBP, ursBV = ursaMin.pos_vel(timeRange)
+    ursTime = (2, 4.4)
+
+    ursSP, ursSV = ursaMin.orbit_tindep(timeRange, fZhao)[2:]
+
+            # Derivatives
+    histUrsa, derivUrsa = dv.take_deriv("Ursa Minor")
+    edgesUrsa = dv.stair_edges(derivUrsa[0], histUrsa[0])
+
+    
+        # MW virial radius
+    initCond = initial_conds()
+    draPos, draVel = initCond.draco                         # Draco
+
+    draZhao = dwarf_galaxy("Zhao", draPos, draVel, fZhao)
+
+    interTime = interp1d(draZhao.time, draZhao.red)
+    corrZVals = interTime(-yearRange*1e9)
+    
+    zhaoIntO = interp1d(draZhao.red, draZhao.virR)          # Interp for Zhao
+    zhaoIntR = ge.conv_m_kpc(zhaoIntO(corrZVals))
+
+        # Redshift on top axis
+    redVals = np.unique(np.floor(corrZVals))                # Selecting z values
+    redInd = [ge.find_closest(corrZVals, zV)[0] for zV in redVals]
+    locs = [adjRange[ind] for ind in redInd]               # Tick locations
+
+        # Initial errors
+#     draErrLow, draErrHigh = 1.5, 6.1
+#     scuErrLow, scuErrHigh = 2.4, 5.2
+
+    matplotlib.rcParams['font.family'] = ['Times']
+
+    # Plotting
+    fig = figure(figsize=(14,7))
+    ax = fig.add_subplot(1,1,1)
+    ax2 = ax.twiny()
+    # ax3 = fig.add_subplot(2,2,1)
+    # ax4 = fig.add_subplot(2,2,2)
+
+        # Time independent
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(draSP[:-1]), label="$t$ indep.", 
+    #         ls="-.", lw=2, color="magenta")
+    # ax3.plot(adjRange[:-1], draSV[:-1]/1e3, label="Velocity", 
+    #         ls="--", lw=2, color="red")
+
+        # Time dependent
+    ax.plot(adjRange[:-1], ge.conv_m_kpc(scuMZP[:-1]), color="magenta", ls="-.", 
+            label=r"$-\sigma$", lw=2, zorder=2.7)
+
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(draBP[:-1]), label="van den Bosch (2014)",
+    #         color="red", lw=2, zorder=3)
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(draZP[:-1]), color="navy", ls="-", 
+    #         label="Normal", lw=2, zorder=2.7)
+    # ax.axvline(draTime[0], color="black", ls="-.", lw=2)
+    # ax.axvline(draTime[1], color="black", ls="-.", lw=2)
+    # ax.axvspan(draTime[0], draTime[1], color="lightgreen", alpha=.3)
+
+
+
+#     ax.fill_between(yearRange[:-1], draPosKpc-draErrLow*incFact,
+#                     draPosKpc+draErrHigh*incFact, alpha=0.2, color="red")
+#
+#     ax.fill_between(yearRange[:-1], draZKpc-draErrLow*incFact,
+#                     draZKpc+draErrHigh*incFact, alpha=0.2, color="darksalmon")
+
+        # Ursa Minor
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(ursZP[:-1]), color="magenta", lw=2, 
+    #         label="Orbit")
+    # # ax.plot(adjRange[:-1], ge.conv_m_kpc(ursSP[:-1]), ls=":")
+    # ax.axvline(ursTime[0], color="black", ls="-.", lw=2)
+    # ax.axvline(ursTime[1], color="black", ls="-.", lw=2)
+    # ax.axvspan(ursTime[0], ursTime[1], color="lightgreen", alpha=.3)
+
+        # Sculptor
+    ax.plot(adjRange[:-1], ge.conv_m_kpc(scuZP[:-1]), color="navy", lw=2, 
+            label="Normal")
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(scuSP[:-1]), ls=":", color="navy")
+    ax.axvline(scuTime[0], color="black", ls="-.", lw=2)
+    ax.axvline(scuTime[1], color="black", ls="-.", lw=2)
+    ax.axvspan(scuTime[0], scuTime[1], color="lightgreen", alpha=.3)
+
+    ax.plot(adjRange[:-1], ge.conv_m_kpc(scuPZP[:-1]), color="red", ls="--", 
+            label=r"$+\sigma$", lw=2, zorder=2.7)
+
+        # Carina
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(carZP[:-1]), color="teal", lw=2, 
+    #         label="Orbit", ls="-")
+    # # ax.plot(adjRange[:-1], ge.conv_m_kpc(carSP[:-1]), ls=":")
+
+    # ax.axvline(car1Time[0], color="black", ls="-.", lw=2)
+    # ax.axvline(car1Time[1], color="black", ls="-.", lw=2)
+    # ax.axvspan(car1Time[0], car1Time[1], color="lightgreen", alpha=.3)
+
+    # ax.axvline(car2Time[0], color="black", ls="-.", lw=2)
+    # ax.axvline(car2Time[1], color="black", ls="-.", lw=2)
+    # ax.axvspan(car2Time[0], car2Time[1], color="lightgreen", alpha=.3)
+    # ax.plot(adjRange[:-1], carZV[:-1], color="navy", lw=2)
+
+#     ax.plot(adjRange[:-1], ge.conv_m_kpc(carBPos[:-1]), label="Carina",
+#             color="teal")
+
+
+#     ax.fill_between(yearRange[:-1], scuPosKpc-scuErrLow*incFact,
+#                     scuPosKpc+scuErrHigh*incFact, alpha=0.2, color="navy")
+#
+#     ax.fill_between(yearRange[:-1], scuZKpc-scuErrLow*incFact,
+#                     scuZKpc+scuErrHigh*incFact, alpha=0.2, color="teal")
+
+        # Energies
+    # ax.plot(adjRange[:-1], eKinS+ePotS, color="magenta", ls=":", lw=2)
+    # ax.plot(adjRange[:-1], eKinS, color="navy", ls=":", lw=2)
+    # ax.plot(adjRange[:-1], ePotS, color="red", ls=":", lw=2)
+    # label=r"$\mathcal{E}$", label=r"$\mathcal{K}$" label=r"$\mathcal{U}$"
+
+    # ax.plot(adjRange[:-1], eDraZ[0]+eDraZ[1], color="magenta", ls="--", lw=2, zorder=3)
+    # ax.plot(adjRange[:-1], eDraB[0]+eDraB[1], label=r"$\mathcal{E}$", color="magenta", 
+    #         lw=2, zorder=2.9)
+
+    # ax.plot(adjRange[:-1], eDraZ[0], color="navy", ls="--", lw=2, zorder=2.8)
+    # ax.plot(adjRange[:-1], eDraB[0], label=r"$\mathcal{K}$", color="navy", lw=2, 
+    #         zorder=2.7)
+
+    # ax.plot(adjRange[:-1], eDraZ[1], color="red", ls="--", lw=2, zorder=2.6)
+    # ax.plot(adjRange[:-1], eDraB[1], label=r"$\mathcal{U}$", color="red", lw=2, 
+    #         zorder=2.5)
+
+        # SFH
+    # ax3.stairs(histScu[1]*1e4, edgesScu, baseline=None, color="red", lw=2)
+    # ax3.scatter(histScu[0], histScu[1]*1e4, color="red", marker="X", alpha=.3, s=50)
+
+    # ax4.axhline(-12, color="k", lw=2)
+    # ax4.plot(derivScu[0], derivScu[1]*1e5, color="red", marker="X", ms=7, lw=2)
+
+    # ax2.plot(adjRange, zhaoIntR/max(zhaoIntR), color="white", alpha=0)
+    ax2.plot(adjRange, zhaoIntR, color="slateblue", lw=2, ls=":", 
+             label=r"$r_\Delta$")
+    # ax2.plot(adjRange, tIndepR, color="slateblue", ls=":", label=r"$r_\Delta$ MW")
+
+    ax.set_xlabel(r"$t_0 - t$ (Gyr)", fontsize=22)
+    ax.set_ylabel(r"$r$ (kpc)", fontsize=22)
+    ax.tick_params(axis="both", labelsize=24)
+    # ax.set_title("Dashed = Zhao (2009), solid = van den Bosch (2014)",
+    #              fontsize=18)
+    # ax.yaxis.offsetText.set_fontsize(24)
+
+    # ax.grid(zorder=2.1)
+    # ax.legend(fontsize=15, loc="best")
+
+    indices = (0, 1, 2, 4)
+    placeLocs = [locs[i] for i in indices]
+    placeRedVals = [redVals[i] for i in indices]
+
+    ax2.set_xticks(placeLocs, placeRedVals)
+    ax2.set_xlabel(r"$z$", fontsize=22)
+    ax2.tick_params(axis="x", labelsize=24)
+
+    # ax3.set_xlabel(r"$t_0 - t$ (Gyr)", fontsize=22)
+    # ax3.set_ylabel(r"$\psi$ ($10^{-4}$ M$_\odot$ yr$^{-1}$)", fontsize=22)
+    # ax3.tick_params(axis="both", labelsize=24)
+    # ax3.yaxis.offsetText.set_fontsize(24)
+
+    # ax4.set_xlabel(r"$t_0 - t$ (Gyr)", fontsize=22)
+    # ax4.set_ylabel(r"d $\psi$ / dt ($10^{-5}$ M$_\odot$ yr$^{-1}$ Gyr$^{-1}$)", 
+    #                fontsize=20)
+    # ax4.tick_params(axis="both", labelsize=24)
+
+    # ax.legend(bbox_to_anchor=(1.18, 1.05), fontsize=20, frameon=False, ncol=1)
+    ax.legend(bbox_to_anchor=(.65, 1.3), fontsize=20, frameon=False, ncol=3)
+    # ax3.legend(bbox_to_anchor=(0.7, 1.25), fontsize=20, frameon=False)
+    ax2.legend(bbox_to_anchor=(.77, 1.3), fontsize=20, frameon=False)
+
+    # fig.suptitle("Dashed = Zhao (2009), solid = van den Bosch (2014)", fontsize=22)
+    fig.tight_layout()
+    fig.savefig("Sculptor_sigma_orbit.png")
+
+    show()
+
+
+if __name__ == "__main__":
+    main()

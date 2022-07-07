@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.constants import G
 from scipy.interpolate import interp1d
+from astropy.constants import M_sun
 import astropy.units as u
 from matplotlib.pyplot import figure, show
+import matplotlib
 
 import general as ge
 import mass_change as mc
@@ -68,12 +70,16 @@ class dwarf_galaxy(object):
         if self.name == "Bosch": return self.prof.vir_rad()
         return self.prof.virR
     
-    
     def find_rs_rhoS(self, zV):
         """ Find correct rS """
         redInd = ge.find_closest(self.red, zV)[0]
         return self.rS[redInd], self.rhoS[redInd]
     
+    def correct_red(self, tRange):
+        """ Find corrected redshift """
+        interTime = interp1d(self.time, self.red)
+        return interTime(tRange)
+
     
     def diff_pot(self, p, z, M, *args):
         """ Differential equation """
@@ -97,8 +103,10 @@ class dwarf_galaxy(object):
         yearRange = ge.conv_sec_year(-tRange)
         
             # Interpolate mass and redshift values
-        interTime = interp1d(self.time, self.red)
-        corrRed = interTime(yearRange)
+        # interTime = interp1d(self.time, self.red)
+        # corrRed = interTime(yearRange)
+
+        corrRed = self.correct_red(yearRange)
         
         interMass = interp1d(self.red, self.mass)
         corrMass = interMass(corrRed)
@@ -132,6 +140,21 @@ class dwarf_galaxy(object):
         
         return np.asarray(pNorm), np.asarray(vNorm)
     
+    
+    # def pot_energy(self, tRange, tPos, *args):
+    #     """ Gravitational potential energy per unit mass """
+        
+    #         # Interpolate mass and redshift values
+    #     normTime = self.norm_time(tRange)
+    #     corrRed, corrMass = lf.correct_values(self.red, self.mass, normTime)
+        
+    #     tDist = np.asarray([np.linalg.norm(pos) for pos in tPos])   # Distance
+        
+    #     prof = self.profile
+    #     pot = prof.pot_z_r(corrRed, tDist, *args)
+        
+    #     return pot
+    
     def pot_energy(self, tRange, pos):
         """ Gravitational potential energy per unit mass """
 
@@ -141,10 +164,11 @@ class dwarf_galaxy(object):
 
         profile = self.prof                                 # Loading profile
 
+        # fullPot = profile.pot_nfw(corrRed, pos)
         fullPot = [profile.pot_nfw(zV, pos[ind]) 
                    for ind, zV in enumerate(corrRed[:-1])]
 
-        return fullPot
+        return fullPot # profile.pot_nfw(corrRed, pos)
     
     def tindep_pot(self, pos, z=0):
         """ Time independent potential energy """
@@ -155,12 +179,23 @@ class dwarf_galaxy(object):
         return 0.5 * np.power(tVel, 2)
 
 
+def exp_mah(z, alpha, M0=1.25e12):
+    """ Simple exponential MAH """
+    return M0 * np.exp(-alpha * z)
+
+def two_param_mah(z, beta, gamma, M0=1.25e12):
+    """ Two parameter MAH """
+    return M0 * np.power(1+z, beta) * np.exp(-gamma * z)
+
+
 def main():
     """ Main function that will be executed """
     
         # File names for models
-    fZhao = "./mandc_m125e12/mandcoutput.m125e12"
-    fBosch = "./getPWGH/PWGH_average_125e12_test.dat"
+    fZhao = "./mandc_m125_final/mandcoutput.m125_final"
+    fBosch = "./getPWGH/PWGH_median.dat"
+
+    M0 = 1.25e12                                        # Initial mass, M_sun
     
     
         # Initial conditions Draco I dwarf
@@ -193,89 +228,228 @@ def main():
                             int(1e3))
     yearRange = np.linspace(t0-tF, t0-tS, int(1e3))[::-1]       # Time in Gyr
 
+    distRange = np.linspace(ge.conv_kpc_m(0.1), ge.conv_kpc_m(300), 1000)
 
         # Creating the dwarf_galaxy objects
     zhaoDwarf = dwarf_galaxy("Zhao", pStart, vStart, fZhao)     # Zhao
     boschDwarf = dwarf_galaxy("Bosch", pStart, vStart, fBosch)  # van den Bosch
 
+    # dracoCond = initial_conds().draco
+    dracoZhao = dwarf_galaxy("Zhao", pStart, vStart, fZhao)
+    dracoBosch = dwarf_galaxy("Bosch", pStart, vStart, fBosch)
 
-        # Integrating the orbit
-    zhaoP, zhaoV = zhaoDwarf.integ_time(timeRange)
-    zhaoPos, zhaoVel = zhaoDwarf.dist_time_vel(zhaoP, zhaoV)
+        # Profiles
+    draZProf = dracoZhao.prof
+    draBProf = dracoBosch.prof
 
-    boschP, boschV = boschDwarf.integ_time(timeRange)
-    boschPos, boschVel = boschDwarf.dist_time_vel(boschP, boschV)
+        # Dark matter profile (r/r_s vs rho/rho_s)
+    xPara = distRange / dracoZhao.rS[0]
+    sZhao = draZProf.simp_profile(xPara)
+    sBosch = draBProf.simp_profile(xPara)
 
-        # Time independent
-    statP, statV = zhaoDwarf.time_indep(timeRange)
-    statPos, statVel = zhaoDwarf.dist_time_vel(statP, statV)
+        # Redshifts
+    zhaoRed, boschRed = dracoZhao.red, dracoBosch.red
 
-        # MW virial radius
-    corrZVals = mc.time_red(yearRange*1e9)                  # Redshift for time
+    zVals = [0, 2.5, 5]
+    colors = ["navy", "red", "magenta"]
 
-    zhaoIntO = interp1d(zhaoDwarf.red, zhaoDwarf.virR)      # Interp for Zhao
-    boschIntO = interp1d(boschDwarf.red, boschDwarf.virR)   # Interp for Bosch
+    cutBInd = ge.find_closest(boschRed, 10)[0]
+    boschRed = boschRed[:cutBInd+1]
 
-    zhaoIntR = ge.conv_m_kpc(zhaoIntO(corrZVals))           # vir. rad Zhao
-    boschIntR = ge.conv_m_kpc(boschIntO(corrZVals))         # vir. rad Bosch
+    cutZInd = ge.find_closest(zhaoRed, boschRed[-1])[0]
+    zhaoRed = zhaoRed[:cutZInd+1]
 
-            # Redshift on top axis
-    redVals = np.unique(np.floor(corrZVals))                # Selecting z values
-    redInd = [ge.find_closest(corrZVals, zV)[0] for zV in redVals]
-    locs = [yearRange[ind] for ind in redInd]               # Tick locations
+    zhaoConc = draZProf.conc[:cutZInd+1]
+    boschConc = draBProf.conc[:cutBInd+1]
+
+        # Virial masses and radii
+    draZMass, draBMass = dracoZhao.mass[:cutZInd+1], dracoBosch.mass[:cutBInd+1]
+    draZRad, draBRad = dracoZhao.virR[:cutZInd+1], dracoBosch.virR[:cutBInd+1]
+
+    findDraZM = draZProf.virial_mass()[:cutZInd+1]
+    findDraBM = draBProf.virial_mass()[:cutBInd+1]
 
 
-        # Finding properties of first infall
-    infalT = (3.5, 4.5)
-    inds = [ge.find_closest(yearRange, val)[0] for val in infalT][::-1]
+    indAlpha = ge.find_closest(draZMass, 0.5*1.25e12)[0]
+    alph = np.log(2) / zhaoRed[indAlpha]
+    expMah = exp_mah(zhaoRed, alph)
 
-    cutBosch = boschPos[inds[0]:inds[1]]
-    cutZhao = zhaoPos[inds[0]:inds[1]]
+    beta, gamma = 0.1, 0.69
+    twoParamMah = two_param_mah(zhaoRed, beta, gamma)
 
-    boschInd, boschVal = ge.find_closest(boschPos, min(cutBosch))
-    zhaoInd, zhaoVal = ge.find_closest(zhaoPos, min(cutZhao))
+        # r_s and rho_s
+    draZRs, draBRs = draZProf.rS[:cutZInd+1], draBProf.rS()[:cutBInd+1]
+    draZRhos, draBRhos = draZProf.rhoS[:cutZInd+1], draBProf.rhoS()[:cutBInd+1]
 
-    print("Zhao position =", ge.conv_m_kpc(zhaoVal))
-    print("Bosch position =", ge.conv_m_kpc(boschVal))
+    denom = 16 * np.pi * np.power(draZRs, 3) * (np.log(1 + zhaoConc)
+            - zhaoConc / (1 + zhaoConc))
+    calcRho = draZMass * M_sun.value / denom
 
-    print("Zhao velocity =", zhaoVel[zhaoInd])
-    print("Bosch velocity =", boschVel[boschInd])
+    calcRs = draZRad / zhaoConc
+    
+        # Density profile
+    draZDens = draZProf.nfw_profile(zVals, distRange)
+    draBDens = draBProf.nfw_profile(zVals, distRange)
 
-    print("Time Zhao =", yearRange[zhaoInd])
-    print("Time Bosch =", yearRange[boschInd])
+        # Gravitational potential
+    draZPot = draZProf.pot_nfw(zVals, distRange)
+    draBPot = draBProf.pot_nfw(zVals, distRange)
+
+    indicesZ = [ge.find_closest(zhaoRed, z)[0] for z in zVals]
+    radii = [draZRad[i] for i in indicesZ]
+
+    #     # Integrating the orbit
+    # zhaoP, zhaoV = zhaoDwarf.integ_time(timeRange)
+    # zhaoPos, zhaoVel = zhaoDwarf.dist_time_vel(zhaoP, zhaoV)
+
+    # boschP, boschV = boschDwarf.integ_time(timeRange)
+    # boschPos, boschVel = boschDwarf.dist_time_vel(boschP, boschV)
+
+    #     # Time independent
+    # statP, statV = zhaoDwarf.time_indep(timeRange)
+    # statPos, statVel = zhaoDwarf.dist_time_vel(statP, statV)
+
+    #     # MW virial radius
+    # corrZVals = mc.time_red(yearRange*1e9)                  # Redshift for time
+
+    # zhaoIntO = interp1d(zhaoDwarf.red, zhaoDwarf.virR)      # Interp for Zhao
+    # boschIntO = interp1d(boschDwarf.red, boschDwarf.virR)   # Interp for Bosch
+
+    # zhaoIntR = ge.conv_m_kpc(zhaoIntO(corrZVals))           # vir. rad Zhao
+    # boschIntR = ge.conv_m_kpc(boschIntO(corrZVals))         # vir. rad Bosch
+
+    #         # Redshift on top axis
+    # redVals = np.unique(np.floor(corrZVals))                # Selecting z values
+    # redInd = [ge.find_closest(corrZVals, zV)[0] for zV in redVals]
+    # locs = [yearRange[ind] for ind in redInd]               # Tick locations
+
+
+    #     # Finding properties of first infall
+    # infalT = (3.5, 4.5)
+    # inds = [ge.find_closest(yearRange, val)[0] for val in infalT][::-1]
+
+    # cutBosch = boschPos[inds[0]:inds[1]]
+    # cutZhao = zhaoPos[inds[0]:inds[1]]
+
+    # boschInd, boschVal = ge.find_closest(boschPos, min(cutBosch))
+    # zhaoInd, zhaoVal = ge.find_closest(zhaoPos, min(cutZhao))
+
+    # print("Zhao position =", ge.conv_m_kpc(zhaoVal))
+    # print("Bosch position =", ge.conv_m_kpc(boschVal))
+
+    # print("Zhao velocity =", zhaoVel[zhaoInd])
+    # print("Bosch velocity =", boschVel[boschInd])
+
+    # print("Time Zhao =", yearRange[zhaoInd])
+    # print("Time Bosch =", yearRange[boschInd])
 
 
     # Plotting
+    matplotlib.rcParams['font.family'] = ['Times']
+
     fig = figure(figsize=(14,7))
-    ax = fig.add_subplot(1,1,1)
-    ax2 = ax.twiny()
+    ax = fig.add_subplot(1,2,1)
+    ax2 = fig.add_subplot(1,2,2)
+    # ax2 = ax.twiny()
+
+        # DM profile (r/r_s vs rho/rho_s)
+    # ax.plot(xPara, sZhao, color="navy", lw=2)
+
+        # Masses & radii
+    ax.plot(zhaoRed, draZMass, color="navy", label="Zhao", lw=2, ls="--")
+    ax.plot(boschRed, draBMass, color="red", label="van den Bosch", lw=2)
+
+    # ax.plot(zhaoRed, expMah, color="magenta", label="Exponential", lw=2, ls="-.")
+    # ax.plot(zhaoRed, twoParamMah, color="lime", lw=2, ls=":", 
+    #         label="Two parameter")
+
+    # ax.plot(zhaoRed, findDraZM, color="navy", ls=":", alpha=0.7)
+    # ax.plot(boschRed, findDraBM, color="red", ls=":", alpha=0.7)
+
+    ax2.plot(zhaoRed, ge.conv_m_kpc(draZRad), color="navy", lw=2, ls="--")
+    ax2.plot(boschRed, ge.conv_m_kpc(draBRad), color="red", lw=2)
+
+        # r_s and rho_s
+    # ax.plot(zhaoRed, ge.conv_m_kpc(draZRs), color="navy", lw=2, ls="--")
+    # ax.plot(boschRed, ge.conv_m_kpc(draBRs), color="red", lw=2)
+
+    # ax2.plot(zhaoRed, ge.conv_dens(draZRhos), color="navy", lw=2, ls="--")
+    # ax2.plot(boschRed, ge.conv_dens(draBRhos), color="red", lw=2)
+
+        # c and r_s vs r_delta
+    # ax.plot(zhaoRed, zhaoConc, color="navy", lw=2, ls="--")
+    # ax.plot(boschRed, boschConc, color="red", lw=2)
+
+    # ax2.plot(ge.conv_m_kpc(draZRad), ge.conv_m_kpc(draZRs), color="navy", lw=2, ls="--")
+    # ax2.plot(ge.conv_m_kpc(draBRad), ge.conv_m_kpc(draBRs), color="red", lw=2)
+
+        # Density
+    # for ind, dens in enumerate(draZDens):
+    #     ax.plot(ge.conv_m_kpc(distRange), ge.conv_dens(dens), ls="--", lw=2, 
+    #             color=colors[ind])
+    #     ax.plot(ge.conv_m_kpc(distRange), ge.conv_dens(draBDens[ind]), 
+    #             color=colors[ind], label=f"z = {zVals[ind]}", lw=2)
+
+    #     ax.axvline(ge.conv_m_kpc(radii[ind]), ls=":", alpha=0.7, 
+    #                color=colors[ind], lw=2)
+
+
+    #     # Potential
+    # for ind, pot in enumerate(draZPot):
+    #     ax.plot(ge.conv_m_kpc(distRange), pot, ls="--", lw=2, 
+    #             color=colors[ind])
+    #     ax.plot(ge.conv_m_kpc(distRange), draBPot[ind], 
+    #             color=colors[ind], label=f"z = {zVals[ind]}", lw=2)
+        
+    #     ax.axvline(ge.conv_m_kpc(radii[ind]), ls=":", alpha=0.7, 
+    #                color=colors[ind], lw=2)
+
+    
+    ax.set_xlabel(r"$z$", fontsize=22)
+    ax.set_ylabel(r"$M_\Delta$ (M$_\odot$)", fontsize=22)
+    ax.tick_params(axis="both", labelsize=24)
+    # ax.legend(fontsize=22, frameon=False)
+    
+    ax2.set_xlabel(r"z", fontsize=22)
+    ax2.set_ylabel(r"$r_\Delta$ (kpc)", fontsize=22)
+    ax2.tick_params(axis="both", labelsize=24)
+    
+    # ax.set_xscale("log")
+    ax.set_yscale("log")
+
+    # ax.yaxis.offsetText.set_fontsize(22)
+    # ax.legend(bbox_to_anchor=(1.23, 1.05), frameon=False, fontsize=22)
+
+    ax2.set_yscale("log")
 
         # r(t)
-    ax.plot(yearRange[:-1], ge.conv_m_kpc(statPos[:-1]), color="teal", ls="--",
-            label="Time independent")
+    # ax.plot(yearRange[:-1], ge.conv_m_kpc(statPos[:-1]), color="teal", ls="--",
+    #         label="Time independent")
 
-    ax.plot(yearRange[:-1], ge.conv_m_kpc(zhaoPos[:-1]), label="Zhao (2009)",
-            color="navy")
+    # ax.plot(yearRange[:-1], ge.conv_m_kpc(zhaoPos[:-1]), label="Zhao (2009)",
+    #         color="navy")
 
-    ax.plot(yearRange[:-1], ge.conv_m_kpc(boschPos[:-1]), color="red",
-            label="van den Bosch (2014)")
+    # ax.plot(yearRange[:-1], ge.conv_m_kpc(boschPos[:-1]), color="red",
+    #         label="van den Bosch (2014)")
 
-    ax2.plot(yearRange, zhaoIntR, color="slateblue", ls=":")
-    ax2.plot(yearRange, boschIntR, color="tomato", ls=":")
+    # ax2.plot(yearRange, zhaoIntR, color="slateblue", ls=":")
+    # ax2.plot(yearRange, boschIntR, color="tomato", ls=":")
 
-    ax.set_xlabel(r"$t_0 - t$ (Gyr)", fontsize=15)
-    ax.set_ylabel(r"$r$ (kpc)", fontsize=15)
-    ax.tick_params(axis="both", labelsize=15)
+    # ax.set_xlabel(r"$t_0 - t$ (Gyr)", fontsize=15)
+    # ax.set_ylabel(r"$r$ (kpc)", fontsize=15)
+    # ax.tick_params(axis="both", labelsize=15)
 
-    ax.grid()
-    ax.legend(loc="lower right", fontsize=15)
+    # ax.grid()
+    # ax.legend(loc="lower right", fontsize=15)
 
-    ax2.set_xticks(locs[:6], redVals[:6])
-    ax2.set_xlabel(r"$z$", fontsize=15)
-    ax2.tick_params(axis="x", labelsize=12)
+    # ax2.set_xticks(locs[:6], redVals[:6])
+    # ax2.set_xlabel(r"$z$", fontsize=15)
+    # ax2.tick_params(axis="x", labelsize=12)
+
+    fig.suptitle("Dashed = Zhao (2009), solid = van den Bosch (2014)", fontsize=22)
 
     fig.tight_layout()
-#     fig.savefig("updated_integration.png")
+    fig.savefig("virrad_virmass_slides.png")
 
     show()
 
