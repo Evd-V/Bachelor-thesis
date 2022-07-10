@@ -7,7 +7,6 @@ from matplotlib.pyplot import figure, show
 import matplotlib
 
 import general as ge
-import mass_change as mc
 import initial_cond as ic
 import leapfrog as lf
 
@@ -16,17 +15,64 @@ from bosch import bosch
 
 
 class dwarf_galaxy(object):
-    """ Dwarf galaxy object """
+    """ Class for intializing a dark matter halo and its properties.
+        There are two models available for the evolution of the dark 
+        matter halo: Zhao (2009) and van den Bosch (2014).
+
+        Attributes:
+
+            name:   The name of the evolution model of the dark matter 
+                    halo; there are 2 options: Zhao and Bosch, corresponding 
+                    to the models of Zhao (2009) and van den Bosch (2014), 
+                    respectively.
+            
+            fName:  The name of the file containing the data of the model.
+
+            pos:    The 3D initial position of the dwarf galaxy of interest. 
+                    This should preferabaly be given in a galactocentric 
+                    Cartesian coordinate system.
+            
+            vel:    The 3D initial velocity of the dwarf galaxy of interest. 
+                    Defined in the same coordinate system as the position.
+            
+            t0:     The age of the Universe according to a LCDM cosmology.
+
+            M0:     The virial mass of the dark matter halo at redshift z=0
+                    in units of solar masses. Default: 1.25*10^12.
+
+            prof:   The evolution profile of the darkr matter halo, 
+                    determined by the model chosen (Zhao or Bosch).
+            
+            red:    The redshift at which the profile is defined.
+            Mass:   The virial halo mass of the profile in solar masses.
+            virR:   The virial radius of the dark matter halo in meters.
+            time:   The lookback time corresponding to the redshift red in yr.
+            rS:     The scale radius of the dark matter halo in meters
+            rhoS:   The density at the scale radius of the dark matter halo 
+                    in kg/m^3.
+    
+    """
 
     def __init__(self, name, pos, vel, fName, M0=1.25e12):
-        """ Initializing """
+        """ Initializing the dark matter halo and the correct profile.
+
+            Input:
+                name    (string)
+                pos     (numpy array)
+                vel     (numpy array)
+                fName   (string)
+                M0      (float)
+            
+            Returns:
+                dwarf_galaxy    (object)
+        """
         
         self.name = name                        # Name of model
         self.fName = fName                      # File name
         self.pos = pos                          # 3D position
         self.vel = vel                          # 3D velocity
         
-        self.t0 = 13.78e9                        # Age of Universe
+        self.t0 = 13.78e9                       # Age of Universe
         self.M0 = M0                            # Initial halo mass
         
             # Creating profile depending on model
@@ -58,7 +104,15 @@ class dwarf_galaxy(object):
         return self.prof.time
     
     def rs_rhos(self):
-        """ Find r_s and rho_s in SI units """
+        """ Find r_s and rho_s in SI units.
+
+            Input:
+                -
+
+            Returns:
+                scale radius in meters (numpy array).
+                density at the scale radius in kg/m^3 (numpy array)
+        """
     
         prof = self.prof                            # Profile
     
@@ -71,18 +125,42 @@ class dwarf_galaxy(object):
         return self.prof.virR
     
     def find_rs_rhoS(self, zV):
-        """ Find correct rS """
+        """ Find r_s and rho_s at a given redshift value 
+        
+            Input:
+                zV:     Redshift at whicht r_s and rho_s are found 
+                        (float)
+        """
         redInd = ge.find_closest(self.red, zV)[0]
         return self.rS[redInd], self.rhoS[redInd]
     
     def correct_red(self, tRange):
-        """ Find corrected redshift """
+        """ Find redshift corresponding to a given time range.
+
+            Input:
+                tRange: time (in years) at which the redshift has to be 
+                        found (numpy array).
+            
+            Returns:
+                interpolated redshift values (numpy array)
+        """
         interTime = interp1d(self.time, self.red)
         return interTime(tRange)
 
     
-    def diff_pot(self, p, z, M, *args):
-        """ Differential equation """
+    def diff_pot(self, p, z):
+        """ Equation of motion that has to be solved to find the position 
+            and velocity of dwarf galaxies in a potential of a dark matter 
+            halo given by the NFW profile.
+
+            Input:
+                p:      Position vector of the dwarf galaxy (2D numpy array).
+                z:      Redshift at which the equation of motion is calculated 
+                        (float).
+                
+            Returns:
+                The equation of motion (numpy array).
+        """
         
         r = np.linalg.norm(p)                           # Distance
         rS, rhoS = self.find_rs_rhoS(z)                 # r_s & rho_s
@@ -96,67 +174,94 @@ class dwarf_galaxy(object):
         return p * fRad / r
     
     
-    def integ_time(self, tRange, *args):
-        """ Integrate the orbit of the dwarf galaxy """
-        
-            # Converting time range to years
-        yearRange = ge.conv_sec_year(-tRange)
-        
-            # Interpolate mass and redshift values
-        # interTime = interp1d(self.time, self.red)
-        # corrRed = interTime(yearRange)
+    def integ_time(self, tRange):
+        """ Compute the orbit of the dwarf galaxy by integrating the second 
+            order differential equation given by the equation of motion. 
+            The equation of motion is found with a time dependent 
+            gravitational potential.
 
-        corrRed = self.correct_red(yearRange)
+            Input:
+                tRange: Time steps at which the orbit has to be calculated,  
+                        in seconds (numpy array).
+
+            Returns:
+                timePos: The 3D position of the dwarf galaxy as a function  
+                         of time (2D numpy array).
+                timeVel: The 3D velocity of the dwarf galaxy as a function 
+                         of time (2D numpy array).
+        """
         
-        interMass = interp1d(self.red, self.mass)
-        corrMass = interMass(corrRed)
+        yearRange = ge.conv_sec_year(-tRange)   # Convert time to years
+        corrRed = self.correct_red(yearRange)   # Interpolate redshift
         
             # Integrating the orbit
         timePos, timeVel = lf.time_leap(self.diff_pot, tRange, self.pos,
-                                        self.vel, corrRed, corrMass, *args)
+                                        self.vel, corrRed)
         
         return timePos, timeVel
     
     
-    def time_indep(self, tRange, z=0, *args):
-        """ Integrate orbit with time independent potential """
-    
-        redV = z * np.ones((len(self.red)))                 # Redshift range
-        zInd, zVal = ge.find_closest(self.red, z)
-        massV = self.mass[zInd] * np.ones((len(self.red)))  # Mass range
+    def time_indep(self, tRange, z=0):
+        """ Compute the orbit of a dwarf galaxy using a time independent 
+            gravitational potential. The equation of motion is solved, and 
+            the properties (e.g. r_s and rho_s) of the dark matter halo 
+            are held constant
         
+            Input:
+                tRange: Time steps at which the orbit has to be calculated,  
+                        in seconds (numpy array).
+                z:      Redshift value at which the orbit has to be 
+                        computed, influences the halo parameters (mass, r_s, 
+                        rho_s, ...). Default: z=0 (float).
+            
+            Returns:
+                statPos: The 3D position of the dwarf galaxy as a function  
+                         of time in a static potential (!) (2D numpy array).
+                statVel: The 3D velocity of the dwarf galaxy as a function 
+                         of time in a static potential (!) (2D numpy array).
+        """
+    
+        redV = z * np.ones((len(self.red)))                 # Redshift values
+
             # Static potential integration
         statPos, statVel = lf.execute_leap(self.diff_pot, tRange, self.pos,
-                                           self.vel, redV, massV, *args)
+                                           self.vel, redV)
         
         return statPos, statVel
     
     
-    def dist_time_vel(self, tPos, tVel):
-        """ Find norm of position and velocity vectors, time dependent """
+    def dist_time_vel(self, posV, velV):
+        """ Find the norm of the position and velocity vectors. These vectors 
+            can be in a 2D array containing a large number of vectors.
+
+            Input:
+                posV:   3D position vectors (numpy array).
+                velV:   3D velocity vectors (numpy array).
+            
+            Returns:
+                The norm of the position vectors (numpy array).
+                The norm of the velocity vecotrs (numpy array).
+        """
         
-        pNorm = [np.linalg.norm(pos) for pos in tPos]       # Norm of position
-        vNorm = [np.linalg.norm(vel) for vel in tVel]       # Norm of velocity
+        pNorm = [np.linalg.norm(pos) for pos in posV]       # Norm of position
+        vNorm = [np.linalg.norm(vel) for vel in velV]       # Norm of velocity
         
         return np.asarray(pNorm), np.asarray(vNorm)
     
     
-    # def pot_energy(self, tRange, tPos, *args):
-    #     """ Gravitational potential energy per unit mass """
-        
-    #         # Interpolate mass and redshift values
-    #     normTime = self.norm_time(tRange)
-    #     corrRed, corrMass = lf.correct_values(self.red, self.mass, normTime)
-        
-    #     tDist = np.asarray([np.linalg.norm(pos) for pos in tPos])   # Distance
-        
-    #     prof = self.profile
-    #     pot = prof.pot_z_r(corrRed, tDist, *args)
-        
-    #     return pot
-    
     def pot_energy(self, tRange, pos):
-        """ Gravitational potential energy per unit mass """
+        """ Gravitational potential energy per unit mass using the given 
+            position vector(s).
+
+            Input:
+                tRange: Time steps at which the potential energy is calculated
+                        in seconds (numpy array).
+                pos:    Norm of the position vector(s) in meter (numpy array).
+            
+            Returns:
+                potEn:  The gravitational potential energy per unit mass in 
+                        units of J/kg (numpy array).
+        """
 
             # Converting time range to years
         yearRange = ge.conv_sec_year(-tRange)               # Time in years
@@ -164,19 +269,19 @@ class dwarf_galaxy(object):
 
         profile = self.prof                                 # Loading profile
 
-        # fullPot = profile.pot_nfw(corrRed, pos)
-        fullPot = [profile.pot_nfw(zV, pos[ind]) 
+            # Potential energy per unit mass
+        potEn = [profile.pot_nfw(zV, pos[ind]) 
                    for ind, zV in enumerate(corrRed[:-1])]
 
-        return fullPot # profile.pot_nfw(corrRed, pos)
+        return potEn
     
     def tindep_pot(self, pos, z=0):
-        """ Time independent potential energy """
+        """ Time independent potential energy. """
         return self.prof.pot_nfw(z, pos)
     
-    def kin_energy(self, tVel, *args):
-        """ Kinetic energy per unit mass """
-        return 0.5 * np.power(tVel, 2)
+    def kin_energy(self, vel):
+        """ Kinetic energy per unit mass. """
+        return 0.5 * np.power(vel, 2)
 
 
 def exp_mah(z, alpha, M0=1.25e12):
@@ -192,11 +297,9 @@ def main():
     """ Main function that will be executed """
     
         # File names for models
-    fZhao = "./mandc_m125_final/mandcoutput.m125_final"
-    fBosch = "./getPWGH/PWGH_median.dat"
-
-    M0 = 1.25e12                                        # Initial mass, M_sun
-    
+    pathName = "~/Documents/Evan/Studie/Year 3/Bachelor Thesis/"
+    fZhao = pathName + "mandc_m125_final/mandcoutput.m125_final"
+    fBosch = pathName + "getPWGH/PWGH_median.dat"    
     
         # Initial conditions Draco I dwarf
     pmRaDra = 0.039 * u.mas/u.yr                        # RA in mas/yr
@@ -219,9 +322,9 @@ def main():
     vStart = ic.conv_vel_frame(vSpher, pSpher)      # Starting velocity in m/s
 
         # Time integration range
-    tS = 1e-2                  # Start integration time (Gyr)
-    tF = 13.2               # End integration time (Gyr)
-    t0 = 13.8             # Age of Universe (Gyr)
+    tS = 1e-2                   # Start integration time (Gyr)
+    tF = 13.2                   # End integration time (Gyr)
+    t0 = 13.8                   # Age of Universe (Gyr)
     
         # Time in s
     timeRange = np.linspace(-ge.conv_year_sec(tS*1e9), -ge.conv_year_sec(tF*1e9), 
@@ -234,7 +337,6 @@ def main():
     zhaoDwarf = dwarf_galaxy("Zhao", pStart, vStart, fZhao)     # Zhao
     boschDwarf = dwarf_galaxy("Bosch", pStart, vStart, fBosch)  # van den Bosch
 
-    # dracoCond = initial_conds().draco
     dracoZhao = dwarf_galaxy("Zhao", pStart, vStart, fZhao)
     dracoBosch = dwarf_galaxy("Bosch", pStart, vStart, fBosch)
 
@@ -298,16 +400,16 @@ def main():
     indicesZ = [ge.find_closest(zhaoRed, z)[0] for z in zVals]
     radii = [draZRad[i] for i in indicesZ]
 
-    #     # Integrating the orbit
-    # zhaoP, zhaoV = zhaoDwarf.integ_time(timeRange)
-    # zhaoPos, zhaoVel = zhaoDwarf.dist_time_vel(zhaoP, zhaoV)
+        # Integrating the orbit
+    zhaoP, zhaoV = zhaoDwarf.integ_time(timeRange)
+    zhaoPos, zhaoVel = zhaoDwarf.dist_time_vel(zhaoP, zhaoV)
 
-    # boschP, boschV = boschDwarf.integ_time(timeRange)
-    # boschPos, boschVel = boschDwarf.dist_time_vel(boschP, boschV)
+    boschP, boschV = boschDwarf.integ_time(timeRange)
+    boschPos, boschVel = boschDwarf.dist_time_vel(boschP, boschV)
 
-    #     # Time independent
-    # statP, statV = zhaoDwarf.time_indep(timeRange)
-    # statPos, statVel = zhaoDwarf.dist_time_vel(statP, statV)
+        # Time independent
+    statP, statV = zhaoDwarf.time_indep(timeRange)
+    statPos, statVel = zhaoDwarf.dist_time_vel(statP, statV)
 
     #     # MW virial radius
     # corrZVals = mc.time_red(yearRange*1e9)                  # Redshift for time
@@ -415,22 +517,22 @@ def main():
     ax2.tick_params(axis="both", labelsize=24)
     
     # ax.set_xscale("log")
-    ax.set_yscale("log")
+    # ax.set_yscale("log")
 
     # ax.yaxis.offsetText.set_fontsize(22)
     # ax.legend(bbox_to_anchor=(1.23, 1.05), frameon=False, fontsize=22)
 
-    ax2.set_yscale("log")
+    # ax2.set_yscale("log")
 
         # r(t)
-    # ax.plot(yearRange[:-1], ge.conv_m_kpc(statPos[:-1]), color="teal", ls="--",
-    #         label="Time independent")
+    ax.plot(yearRange[:-1], ge.conv_m_kpc(statPos[:-1]), color="teal", ls="--",
+            label="Time independent")
 
-    # ax.plot(yearRange[:-1], ge.conv_m_kpc(zhaoPos[:-1]), label="Zhao (2009)",
-    #         color="navy")
+    ax.plot(yearRange[:-1], ge.conv_m_kpc(zhaoPos[:-1]), label="Zhao (2009)",
+            color="navy")
 
-    # ax.plot(yearRange[:-1], ge.conv_m_kpc(boschPos[:-1]), color="red",
-    #         label="van den Bosch (2014)")
+    ax.plot(yearRange[:-1], ge.conv_m_kpc(boschPos[:-1]), color="red",
+            label="van den Bosch (2014)")
 
     # ax2.plot(yearRange, zhaoIntR, color="slateblue", ls=":")
     # ax2.plot(yearRange, boschIntR, color="tomato", ls=":")
@@ -449,7 +551,7 @@ def main():
     fig.suptitle("Dashed = Zhao (2009), solid = van den Bosch (2014)", fontsize=22)
 
     fig.tight_layout()
-    fig.savefig("virrad_virmass_slides.png")
+    # fig.savefig("virrad_virmass_slides.png")
 
     show()
 
