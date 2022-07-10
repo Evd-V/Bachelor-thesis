@@ -1,35 +1,27 @@
 import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib
-from matplotlib.pyplot import figure, vlines, show
+from matplotlib.pyplot import figure, show
 
 import general as ge
-import mass_change as mc
 from galaxy import dwarf_galaxy
-from dwarfs import initial_conds, calculate_prop
-
+from dwarfs import calculate_prop
 
 
 def plot_graphs():
-    """ Test function to plot some dwarfs """
+    """ Test function to plot some orbits of dwarf galaxies. """
     
         # File names for models
-    fZhao = "./mandc_m125e12/mandcoutput.m125e12"
-    # fZhao = "./mandc_m125_final/mandcoutput.m125_final"
+    fZhao = "./mandc_m125_final/mandcoutput.m125_final"
     # fZhao = "./mandc_m10/mandcoutput.m10"
-    # fBosch = "./getPWGH/PWGH_average_125e12_test.dat"
     fBosch = "./getPWGH/PWGH_median.dat"
     # fBosch = "./getPWGH/PWGH_median_m12.dat"
-    # fBosch = "./getPWGH/PWGH_average_125e12_average.dat"
 
-        # Time integration range
-        # Time in s
+        # Time integration range, time in seconds
     timeRange = np.linspace(-ge.conv_year_sec(1e7), -ge.conv_year_sec(13.5e9), int(1e3))
-    yearRange = ge.conv_sec_year(timeRange) / 1e9                   # Time in Gyr
     
     t0, tS, tF = 13.78, 0, 13.5
     adjRange = np.linspace(t0-tF, t0-tS, int(1e3))[::-1]            # Time in Gyr
-    
     
         # Draco
     draco = calculate_prop("Draco", fZhao, fBosch)
@@ -63,7 +55,6 @@ def plot_graphs():
     colors = ("navy", "red", "magenta", "teal")
     
         # MW virial radius
-#     corrZVals = mc.time_red(adjRange*1e9)                   # Redshift for time
     dwarfGal = dwarf_galaxy("Zhao", sextans.load_dict()[0], sextans.load_dict()[1], fZhao)
     
     interTime = interp1d(dwarfGal.time, dwarfGal.red)
@@ -123,8 +114,9 @@ def plot_graphs():
     fig.supylabel(r"$r$ (kpc)", fontsize=22)
     # fig.suptitle("Dashed = Zhao (2009), solid = van den Bosch (2014)", 
     #              fontsize=22)
-    
-    fig.savefig("galaxy_orbits_comp.png")
+
+        # Uncomment to save figure
+    # fig.savefig("galaxy_orbits_comp.png")
     
     show()
 
