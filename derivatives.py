@@ -2,10 +2,8 @@ import numpy as np
 import matplotlib
 from matplotlib.pyplot import figure, show
 
-import general as ge
-
 def hist_draco():
-    """ Histogram SFH Draco dwarf """
+    """ Histogram SFH Draco dwarf. """
 
     tRange = (0.643, 2.022, 3.6765, 5.5148, 7.353)      # Time values
     psiInner = (0.67, 0.685, 0.18, 0.03, 0)             # Inner part
@@ -17,7 +15,7 @@ def hist_draco():
     return np.asarray(tRange), psiRangeIn + psiRangeOut
 
 def hist_ursa():
-    """ Histogram SFH Ursa Minor """
+    """ Histogram SFH Ursa Minor. """
 
         # Assume BP stars are blue stragglers!!
     tRange = (0.919, 3.217, 5.5148)             # Questionable last points
@@ -30,7 +28,7 @@ def hist_ursa():
     return np.asarray(tRange), psiRangeIn + psiRangeOut
 
 def hist_sculptor():
-    """ Histogram SFH Sculptor """
+    """ Histogram SFH Sculptor. """
 
     # tRange = range(0.3, 10.3, 0.5)          # Time range
     psiTuple = (.98, 1, .99, .95, .92, .87, .82, .75, .62, 
@@ -43,7 +41,7 @@ def hist_sculptor():
     return tRange, psiRange
 
 def hist_carina():
-    """ Histogram SFH Carina (Savino 2015) """
+    """ Histogram SFH Carina (Savino 2015). """
 
     # tRange = range(0.05, 11.8, 0.5)         # Time range
     psiTuple = (1.95, 1.33, .93, .95, 1.18, 1.18, 1.57, 1.2, 
@@ -56,7 +54,7 @@ def hist_carina():
     return tRange, psiRange
 
 def accurate_sculptor():
-    """ Accurate SFH values for Sculptor (de Boer(?)) """
+    """ Accurate SFH values for Sculptor (de Boer(?)). """
 
     fName = "./SFHs/Sculptor_SFH/SFHage_all"            # Data file name
     data = np.loadtxt(fName, comments="#")              # Loading data
@@ -71,7 +69,7 @@ def accurate_sculptor():
     
 
 def accurate_carina():
-    """ Accurate SFH values for Carina (de Boer 2014) """
+    """ Accurate SFH values for Carina (de Boer 2014). """
 
     fName = "./SFHs/Carina_SFH/SFHage_all"               # Data file name
     data = np.loadtxt(fName, comments="#")              # Loading data
@@ -84,12 +82,25 @@ def accurate_carina():
 
 
 def diff_complete(y, t):
-    """ Differentiate function, 0 if delta y = 0 """
+    """ Differentiate function, 0 if delta t = 0. """
     deltaT = t[1:] - t[:-1]
     return np.where(deltaT == 0, 0, (y[1:] - y[:-1]) / deltaT)
 
 def take_deriv(name):
-    """ Take derivative """
+    """ Take derivative of the SFH for one of four dwarf 
+        galaxies: Draco, Ursa Minor, Sculptor or Carina.
+
+        Input:
+            name:   name of dwarf (string).
+        
+        Returns:
+            Tuple containing the time values and the SFH of 
+            the dwarf (tuple containing 2 numpy arrays).
+            
+            Tuple containing the time values where the 
+            derivates are taken and the derivative of the SFH
+            (tuple containing 2 numpy arrays).
+    """
 
         # Dictionary containing histogram data
     dataDict = {
@@ -99,15 +110,28 @@ def take_deriv(name):
                 "Carina": accurate_carina()
                }
     
-    dwarfData = dataDict[name]                  # Picking correct dwarf
+    dwarfData = dataDict[name]                  # Picking dwarf
     tVals, psiVals = dwarfData[0], dwarfData[1] # Unpacking
 
-    dT = (tVals[1:] + tVals[:-1]) * .5       # Time to take derivative
+    dT = (tVals[1:] + tVals[:-1]) * .5          # Time for derivatives
 
     return (tVals, psiVals), (dT, diff_complete(psiVals, tVals))
 
 def take_log_deriv(name):
-    """ Take derivative of ln(psi_ """
+    """ Take derivative of the log of the SFH for one of four 
+        dwarf galaxies: Draco, Ursa Minor, Sculptor or Carina.
+
+        Input:
+            name:   name of dwarf (string).
+        
+        Returns:
+            Tuple containing the time values and the SFH of 
+            the dwarf (tuple containing 2 numpy arrays).
+            
+            Tuple containing the time values where the 
+            derivates are taken and the derivative of the log 
+            of the SFH (tuple containing 2 numpy arrays).
+    """
 
             # Dictionary containing histogram data
     dataDict = {
@@ -117,47 +141,46 @@ def take_log_deriv(name):
                 "Carina": accurate_carina()
                }
     
-    dwarfData = dataDict[name]                  # Selecting correct dwarf
+    dwarfData = dataDict[name]                  # Selecting dwarf
     tVals, psiData = dwarfData[0], dwarfData[1] # Unpacking data
 
     dT = (tVals[1:] + tVals[:-1]) * .5                      # time step
-    logPsi = np.where(psiData != 0., np.log(psiData), 0)     # ln(psi)
+    logPsi = np.where(psiData != 0., np.log(psiData), 0)    # ln(psi)
 
     return (tVals, psiData), (dT, diff_complete(logPsi, tVals)*psiData[1:])
 
 def stair_edges(dT, tVals):
-    """ Determine edges of stairs function """
+    """ Determine edges of stairs function used for plotting SFH.
+
+        Input:
+            dT:     Time at which derivatives are taken (numpy array).
+            tVals:  Time where the SFH is defined (numpy array).
+        
+        Returns:
+            Location of edges for stairs function (numpy array).
+    """
 
     final = 2 * tVals[-1] - dT[-1]              # Final edge location
-    edges1 = np.append([0], [dT])               # First append 0 at beginning
+    edges1 = np.append([0], [dT])               # Append 0 at beginning
 
     return np.append([edges1], [final])
 
 def plot_hist(name, saveFig=None):
-    """ Plot histogram of SFH for given dwarf galaxy """
+    """ Plot histogram of SFH for given dwarf galaxy along with the 
+        derivative of the SFH.
 
-        # Dictionary containing histogram data
-    dataDict = {
-                "Draco": hist_draco(),
-                "Ursa Minor": hist_ursa(),
-                "Sculptor": hist_sculptor(),
-                "Carina": accurate_carina()
-               }
-    
-    # data = dataDict[name]
+        Input:
+            saveFig:    Option to save figure (None or string).
 
-    data = take_deriv(name)
-    tVals, histVals = data[0]
-    dT, derivVals = data[1]
+        Returns:
+            -
+    """
 
+    data = take_deriv(name)             # Retrieve data of dwarf
+    tVals, histVals = data[0]           # SFH itself
+    dT, derivVals = data[1]             # Derivative of the SFH
 
-    # tVals, histVals = data[0], np.where(data[1]!=0, np.log(data[1]), 0)
-    # dT, derivVals = take_log_deriv(name)
-
-    histEdges1 = np.append([0], [dT])
-
-    dist = tVals[-1] - dT[-1]
-    histEdges = np.append([histEdges1], [tVals[-1]+dist])
+    histEdges = stair_edges(dT, tVals)  # Edges of histogram
 
     matplotlib.rcParams['font.family'] = ['Times']
 
@@ -166,7 +189,6 @@ def plot_hist(name, saveFig=None):
     ax = fig.add_subplot(1,2,1)
     ax2 = fig.add_subplot(1,2,2)
 
-    # ax.step(tVals, histVals, where="mid", color="navy")
     ax.stairs(histVals, histEdges, color="navy", lw=2)
     ax.scatter(tVals, histVals, marker="o", color="navy", s=100, alpha=.3, zorder=3)
 
@@ -189,43 +211,21 @@ def plot_hist(name, saveFig=None):
 
     show()
 
-# "Normal derivative"
-# Draco: -1e-5
-# Ursa: -5e-5
-# Sculptor: -1.3e-4
-# Carina: -3.5e-5
-
-# log derivtive * hist data
-# Draco: -5e-6
-# Ursa: -1e-5, but anywhere between -2e-6 and -2.5e-5 is fine
-# Sculptor: -1.1e-4
-# Carina: -4e-5
-
-
 
 def main():
+    """ Main function that will be executed """
 
-    # plot_hist("Ursa Minor")
-
+        # Initialize plot properties for 4 dwarfs
     names = ["Draco", "Ursa Minor", "Sculptor", "Carina"]
     colors = ["navy", "magenta", "red", "teal"]
     lineStyles = ["-", "--", "-.", ":"]
     markers = ["o", "x", "+", "*"]
+    
+        # Take derivative of dwarfs
+    derivDwarfs = [take_deriv(name)[1] for name in names]
 
-    derivDwarf = take_deriv("Draco")
-    xVals = range(0, len(derivDwarf))
-
-    # derivDwarfs = [take_deriv(name) for name in names]
-    # xDwarfs = [range(0, len(deriv)) for deriv in derivDwarfs]
-
-    # plot_hist("Ursa Minor", saveFig=None)
-
-    derivDwarfs = [take_log_deriv(name)[1] for name in names]
-
-        # Draco -0.6e-5
-        # Ursa Minor -0.5e-5
-        # Sculptor -1.4e-5
-        # Carina -7e-5
+        # Uncomment for derivatives of logarithm
+    # derivDwarfs = [take_log_deriv(name)[1] for name in names]
 
     matplotlib.rcParams['font.family'] = ['Times']
 
@@ -237,6 +237,7 @@ def main():
         ax.plot(dwarf[0], dwarf[1], marker=markers[ind], label=names[ind],  
                 color=colors[ind], ls=lineStyles[ind], ms=10, lw=2)
     
+        # Threshold
     # ax.axhline(-.5, color="k")
 
     ax.set_xlabel(r"$t - t_0$ (Gyr)", fontsize=22)
@@ -244,9 +245,9 @@ def main():
     ax.tick_params(axis="both", labelsize=24)
     ax.legend(fontsize=22, frameon=False)
 
-    # ax.grid()
-
     fig.tight_layout()
+
+        # Uncomment to save figure
     # fig.savefig("derivatives.png")
     show()
 
