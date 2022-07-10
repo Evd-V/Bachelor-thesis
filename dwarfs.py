@@ -1,27 +1,61 @@
 from re import A
 import numpy as np
 from scipy.interpolate import interp1d
-from astropy.constants import pc, kpc
+from astropy.constants import kpc
 import astropy.units as u
 import matplotlib
 from matplotlib.pyplot import figure, show
 
 import general as ge
-import nfw_profile as nf
-import mass_change as mc
 import initial_cond as ic
 import derivatives as dv
 from galaxy import dwarf_galaxy
+
 
 # --------------------- #
 #  Initial conditions   #
 # --------------------- #
 
 class initial_conds(object):
-    """ Class containging the initial conditions for dwarf galaxies """
+    """ Class containging the initial conditions for dwarf galaxies. 
+        The initial conditions for each dwarf are taken from the 
+        early data release 3 of the Gaia satellite (Li et al. 2021). 
+        The data used here are: the proper motions in both right 
+        ascension and declination, the radial velocity and the 
+        distance modulus. Next to this we need the right ascension 
+        and declination, these are taken from the NED database.
+
+        The input parameter 'sig' (only available for draco and 
+        sculptor) gives the ability to add or subtract 1 sigma 
+        uncertainty in all the initial conditions.
+
+        Attributes:
+
+            draco:  The initial conditions for the Draco dwarf 
+                    spheroidal galaxy.
+            
+            sculp:  The initial conditions for the Sculptor dwarf 
+                    spheroidal galaxy.
+            
+            ursa:   The initial conditions for the Ursa Minor dwarf 
+                    spheroidal galaxy.
+
+            sext:   The initial conditions for the Sextans dwarf 
+                    spheroidal galaxy.
+            
+            car:    The initial conditions for the Carina dwarf 
+                    spheroidal galaxy.
+    """
 
     def __init__(self, sig=None):
-        """ Initializing """
+        """ Initializing the initial conditions for the dwarf galaxies 
+        
+            Input:
+                sig     (None or string)
+
+            Returns:
+                initial_conds   (object)
+        """
 
             # Data of galaxies
         self.draco = self.draco(sigma=sig)              # Draco I
@@ -33,7 +67,23 @@ class initial_conds(object):
 
     def find_cond(self, pmRa, pmDec, rVel, dm, ra, dec):
         """ Find initial position and velocity in Cartesian galactocentric
+            coordinate system, from the initial conditions in an heliocentric 
             coordinate system.
+
+            Input:
+                pmRa:   The proper motion in the right ascension in mas/yr 
+                        (float).
+                pmDec:  The proper motion in the declination in mas/yr (float).
+                rVel:   The radial velocity in km/s (float).
+                dm:     The distance modulus (float).
+                ra:     Right ascension coordinate in degrees (float).
+                dec:    Declination in degrees (float).
+            
+            Returns:
+                p0:     3D position of the dwarf in a galactocentric Cartesian 
+                        coordinate system (numpy array).
+                v0:     3D velocity of the dwarf in a galactocentric Cartesian 
+                        coordinate system (numpy array).
         """
 
             # Coordinate systems
@@ -45,7 +95,7 @@ class initial_conds(object):
 
 
     def draco(self, sigma=None):
-        """ Initial conditions for the Draco I dwarf galaxy """
+        """ Initial conditions for the Draco I dwarf spheroidal galaxy """
 
             # Data by gaia
         pmRaDra = 0.039 * u.mas/u.yr                    # RA in mas/yr
@@ -75,7 +125,7 @@ class initial_conds(object):
         return p0Dra * kpc.value, v0Dra * 1e3
 
     def sculptor(self, sigma=None):
-        """ Initial conditions for the Draco I dwarf galaxy """
+        """ Initial conditions for the Sculptor dwarf spheroidal galaxy """
 
             # Initial conditions for Sculptor dwarf
         pmRaScu = 0.096 * u.mas/u.yr                    # RA in mas/yr
@@ -105,7 +155,7 @@ class initial_conds(object):
         return p0Scu * kpc.value, v0Scu * 1e3
     
     def ursa_minor(self):
-        """ Initial conditiosn for the Ursa minor dwarf galaxy """
+        """ Initial conditiosn for the Ursa Minor dwarf spheroidal galaxy """
         
             # Initial conditions for Sextans
         pmRaUrs = -0.114 * u.mas/u.yr                   # RA in mas/yr
@@ -122,7 +172,7 @@ class initial_conds(object):
         return p0Urs * kpc.value, v0Urs*1e3
     
     def carina(self):
-        """ Initial conditions for the Carina dwarf galaxy """
+        """ Initial conditions for the Carina dwarf spheroidal galaxy """
         
             # Initial conditions for Sextans
         pmRaCar = 0.533 * u.mas/u.yr                    # RA in mas/yr
@@ -140,7 +190,7 @@ class initial_conds(object):
     
     
     def sextans(self):
-        """ Initial conditions for the Sextans I dwarf galaxy """
+        """ Initial conditions for the Sextans I dwarf spheroidal galaxy """
         
             # Initial conditions for Sextans
         pmRaSxt = -0.403 * u.mas/u.yr                   # RA in mas/yr
@@ -158,10 +208,42 @@ class initial_conds(object):
 
 
 class calculate_prop(object):
-    """ Class to find the position and velocity for dwarf galaxies """
+    """ Class to find the position and velocity for dwarf galaxies as a function 
+        of time. There are 5 dwarf galaxies can be entered: Draco, Sculptor, 
+        Ursa Minor, Sextans and Carina. More can be added if their initial 
+        conditions are added to the class 'initial_conds'.
+
+        For Draco and Sculptor it is possible to select the -1 or +1 sigma 
+        uncertainties in the initial conditions. The others can be added later in 
+        the class 'initial_conds'.
+
+        Attributes:
+
+            name:       The name of the dwarf galaxy (one of the five named above).
+
+            initCond:   The initial conditions of the dwarf galaxy specified by 
+                        the name entered.
+            
+            zhaoGal:    A dark matter halo whose evolution is given by the model 
+                        of Zhao (2009).
+            
+            boschGal:   A dark matter halo whose evolution is given by the model 
+                        of van den Bosch (2014).
+    """
     
     def __init__(self, galName, fZhao, fBosch, sig=None):
-        """ Initialization """
+        """ Initialization the dwarf galaxy of choice and the evolution model of 
+            the dark matter halo of the Milky Way.
+
+            Input:
+                galName     (string)
+                fZhao       (string)
+                fBosch      (string)
+                sig         (None or string)
+            
+            Returns:
+                calculate_prop  (object)
+        """
         
         self.name = galName                             # Name of dwarf galaxy
         self.initCond = initial_conds(sig=sig)          # Initial conditions
@@ -172,25 +254,54 @@ class calculate_prop(object):
         self.boschGal = galaxies[1]                     # Bosch model
     
     def dwarf_object(self, fZhao, fBosch):
-        """ Initializing dwarf galaxy object """
+        """ Initializing the evolution models of the dark matter halo.
 
-        galData = self.load_dict()                          # Loading data
+            Input:
+                fZhao:  Filename containing the data of the model of Zhao (string).
+                fBosch: Filename containing the data of the model of van den 
+                        Bosch (string).
+            Returns:
+                zhaoGal:    Zhao model for dark matter halo of the MW 
+                            (dwarf_galaxy object).
+                boschGal:   van den Bosch model for dark matter halo of the MW 
+                            (dwarf_galaxy object).
+        """
+
+        galData = self.load_dict()                      # Loading data
         zhaoGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
         boschGal = dwarf_galaxy("Bosch", galData[0], galData[1], fBosch)
 
         return zhaoGal, boschGal
 
     def red_time(self):
-        """ Retrieve redshift and time """
+        """ Retrieve redshift and time for the two dark matter halo models. 
 
-        zhaoGal = self.zhaoGal
-        boschGal = self.boschGal
+            Input:
+                -
+            
+            Returns:
+                Redshift for model of Zhao (numpy array).
+                Lookback time for model of Zhao (numpy array).
+                Redshift for model of van den Bosch (numpy array).
+                Lookback time for model of van den Bosch (numpy array).
+        """
+
+        zhaoGal = self.zhaoGal                      # Model of Zhao
+        boschGal = self.boschGal                    # Model of van den Bosch
 
         return zhaoGal.red, zhaoGal.time, boschGal.red, boschGal.time
 
 
     def dict_init(self):
-        """ Dictionary containing names corresponding to initial conditions"""
+        """ Dictionary containing the initial conditions for the five different 
+            dwarf spheroidal galaxies.
+
+            Input:
+                -
+            
+            Returns:
+                galData:    Initial conditions for all dwarfs (dictionary).
+        """
         
         init = self.initCond                            # Loading inital cond.
         
@@ -206,41 +317,79 @@ class calculate_prop(object):
         return galData
     
     def load_dict(self):
-        """ Load correct dictionary data """
+        """ Load dictionary data for correct dwarf galaxy """
         return self.dict_init()[self.name]
     
     def pos_vel(self, timeRange):
-        """ Find full position and velocity for dwarf """
+        """ Find the norm of the position and velocity vectors for the 
+            dwarf as a function of time. This is done by integrating the 
+            equation of motion using the two halo models.
+
+            Input:
+                timeRange:  Time at which the orbits are evaluated (numpy
+                            array).
+            
+            Returns:
+                zhaoPos:    Position for model of Zhao (numpy array).
+                zhaoVel:    Velocity for model of Zhao (numpy array).
+                boschPos:   Position for model of Bosch (numpy array).
+                boschVel:   Velocity for model of Bosch (numpy array).
+        """
+                
+            # Model of Zhao
+        zhaoGal = self.zhaoGal                                  # Loading dm halo
+        zhaoP, zhaoV = zhaoGal.integ_time(timeRange)            # Integrating orbit
+        zhaoPos, zhaoVel = zhaoGal.dist_time_vel(zhaoP, zhaoV)  # Norm of vectors
         
-        galData = self.load_dict()
-        
-        # zhaoGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
-        zhaoGal = self.zhaoGal
-        zhaoP, zhaoV = zhaoGal.integ_time(timeRange)
-        zhaoPos, zhaoVel = zhaoGal.dist_time_vel(zhaoP, zhaoV)
-        
-        boschGal = self.boschGal
-        # boschGal = dwarf_galaxy("Bosch", galData[0], galData[1], fBosch)
-        boschP, boschV = boschGal.integ_time(timeRange)
-        boschPos, boschVel = boschGal.dist_time_vel(boschP, boschV)
+            # Model of van den Bosch
+        boschGal = self.boschGal                                # Loading dm halo
+        boschP, boschV = boschGal.integ_time(timeRange)         # Integrating orbit
+        boschPos, boschVel = boschGal.dist_time_vel(boschP, boschV) # Norm of vectors
         
         return zhaoPos, zhaoVel, boschPos, boschVel
     
-    def orbit_tindep(self, tRange, fZhao, z=0, *args):
-        """ Find orbit for time independent potential """
+    def orbit_tindep(self, tRange, z=0):
+        """ Find the orbit of a dwarf galaxy for a time independent 
+            potential. We use the model of Zhao to find the halo 
+            properties; at low redshift (z < 2) the difference between 
+            the models is negligible. At higher z the difference grows 
+            which can potentially lead to problems. However, it is not 
+            common to integrate with a static potential at high z.
 
-        galData = self.load_dict()                          # Loading data
+            Input:
+                tRange: Time steps at which orbit will be evaluated 
+                        (numpy array).
+                z:      Redshift at which the halo properties are taken;
+                        default: z=0 (float).
+            
+            Returns:
+                sPos:   3D position vector (2D numpy array).
+                sVel:   3D velocity vector (2D numpy array).
+                fullP:  Norm of position vector (numpy array).
+                fullV:  Norm of velocity vector (numpy array).
+        """
 
-            # Creating dwarf galaxy and integrating orbit
-        # tIndepGal = dwarf_galaxy("Zhao", galData[0], galData[1], fZhao)
-        tIndepGal = self.zhaoGal
-        sPos, sVel = tIndepGal.time_indep(tRange, z=z, *args)
-        fullPos, fullVel = tIndepGal.dist_time_vel(sPos, sVel)
+        tIndepGal = self.zhaoGal                            # dm halo
+        sPos, sVel = tIndepGal.time_indep(tRange, z=z)      # Vectors
+        fullP, fullV = tIndepGal.dist_time_vel(sPos, sVel)  # Norm
 
-        return sPos, sVel, fullPos, fullVel
+        return sPos, sVel, fullP, fullV
     
     def orbit_properties(self, fullPos):
-        """ Calculate some time independent orbit properties """
+        """ Calculate some properties of a time independent orbit, 
+            these are: the pericenter and apocenter distance, and the 
+            eccentricity of the orbit.
+
+            Input:
+                fullPos:    Norm of position vector as a function of 
+                            time from a time independent potential 
+                            model (numpy array).
+            
+            Returns:
+                rPeri:  Distance to pericenter in meter (float).
+                rApo:   Distance to apocenter in meter (float).
+                ecc:    Eccentricity of orbit (float).
+        """
 
         kpcPos = ge.conv_m_kpc(fullPos)             # Position in kpc
 
@@ -251,28 +400,52 @@ class calculate_prop(object):
 
         return rPeri, rApo, ecc
 
-    def energy(self, potName, tRange, fullPos, fullVel):
-        """ Calculate kinetic and potential energies """
+    def energy(self, potNme, tRange, fullP, fullV):
+        """ Calculate the specific kinetic and potential energies of 
+            a time dependent orbit. Units: J/kg.
 
-        eKin = .5 * np.power(fullVel, 2)            # Kinetic energy
+            Input:
+                potNme: The name of the dark matter halo model used 
+                        (Zhao or Bosch) (string).
+                tRange: Time range where the energies are calculated 
+                        (numpy array).
+                fullP:  Norm of position vectors (numpy array).
+                fullV:  Norm of velocity vectors (numpy array).
+
+            Returns:
+                eKin:   Specific kinetic energy (numpy array).
+                ePot:   Specific potential energy (numpy array).
+        """
+
+        eKin = .5 * np.power(fullV, 2)            # Kinetic energy
 
             # Potential energy
-        if potName == "Zhao":
-            ePot = self.zhaoGal.pot_energy(tRange, fullPos)
-        elif potName == "Bosch":
-            ePot = self.boschGal.pot_energy(tRange, fullPos)
+        if potNme == "Zhao":
+            ePot = self.zhaoGal.pot_energy(tRange, fullP)
+        elif potNme == "Bosch":
+            ePot = self.boschGal.pot_energy(tRange, fullP)
         else:
-            raise ValueError("Invalid potential model")
+            raise ValueError("Invalid potential model name")
 
         return eKin, ePot
     
-    def energy_tindep(self, fullPos, fullVel, z=0):
-        """ Energies for time independent potential """
+    def energy_tindep(self, fullP, fullV, z=0):
+        """ Specific kinetic and potential energy for a time 
+            independent potential dark matter halo model.
 
-        eKin = .5 * np.power(fullVel, 2)            # Kinetic energy
+            Input:
+                fullP:  Norm of position vectors (numpy array).
+                fullV:  Norm of velocity vectors (numpy array).
+                z:      Redshift at which the potential is taken 
+                        (float).
+            
+            Returns:
+                eKin:   Specific kinetic energy (numpy array).
+                ePot:   Specific potential energy (numpy array).
+        """
 
-            # E_pot is independent of model here
-        ePot = self.zhaoGal.tindep_pot(fullPos, z=z)
+        eKin = .5 * np.power(fullV, 2)            # Kinetic energy
+        ePot = self.zhaoGal.tindep_pot(fullP, z=z)  # Pot energy
         
         return eKin, ePot
 
@@ -282,16 +455,10 @@ class calculate_prop(object):
 # --------------------- #
 
 def main():
+    """ Main function that will be executed. """
 
         # File names for models
-    # fZhao = "./mandc_m125e12/mandcoutput.m125e12"
     fZhao = "./mandc_m125_final/mandcoutput.m125_final"
-    # fZhao = "./mandc_m15/mandcoutput.m15"
-    # fZhao = "./mandc_m8.1/mandcoutput.m8.1"
-    # fZhao = "./mandc_m14.1/mandcoutput.m14.1"
-    # fZhao = "./mandc_m125_Asger/mandcoutput.asger"
-
-    # fBosch = "./getPWGH/PWGH_average_125e12_test.dat"
     fBosch = "./getPWGH/PWGH_median.dat"
     
         # Time integration range
@@ -400,9 +567,6 @@ def main():
     redInd = [ge.find_closest(corrZVals, zV)[0] for zV in redVals]
     locs = [adjRange[ind] for ind in redInd]               # Tick locations
 
-        # Initial errors
-#     draErrLow, draErrHigh = 1.5, 6.1
-#     scuErrLow, scuErrHigh = 2.4, 5.2
 
     matplotlib.rcParams['font.family'] = ['Times']
 
@@ -430,14 +594,6 @@ def main():
     # ax.axvline(draTime[0], color="black", ls="-.", lw=2)
     # ax.axvline(draTime[1], color="black", ls="-.", lw=2)
     # ax.axvspan(draTime[0], draTime[1], color="lightgreen", alpha=.3)
-
-
-
-#     ax.fill_between(yearRange[:-1], draPosKpc-draErrLow*incFact,
-#                     draPosKpc+draErrHigh*incFact, alpha=0.2, color="red")
-#
-#     ax.fill_between(yearRange[:-1], draZKpc-draErrLow*incFact,
-#                     draZKpc+draErrHigh*incFact, alpha=0.2, color="darksalmon")
 
         # Ursa Minor
     # ax.plot(adjRange[:-1], ge.conv_m_kpc(ursZP[:-1]), color="magenta", lw=2, 
@@ -472,15 +628,6 @@ def main():
     # ax.axvspan(car2Time[0], car2Time[1], color="lightgreen", alpha=.3)
     # ax.plot(adjRange[:-1], carZV[:-1], color="navy", lw=2)
 
-#     ax.plot(adjRange[:-1], ge.conv_m_kpc(carBPos[:-1]), label="Carina",
-#             color="teal")
-
-
-#     ax.fill_between(yearRange[:-1], scuPosKpc-scuErrLow*incFact,
-#                     scuPosKpc+scuErrHigh*incFact, alpha=0.2, color="navy")
-#
-#     ax.fill_between(yearRange[:-1], scuZKpc-scuErrLow*incFact,
-#                     scuZKpc+scuErrHigh*incFact, alpha=0.2, color="teal")
 
         # Energies
     # ax.plot(adjRange[:-1], eKinS+ePotS, color="magenta", ls=":", lw=2)
