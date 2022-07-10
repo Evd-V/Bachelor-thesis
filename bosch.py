@@ -37,7 +37,7 @@ class bosch(object):
     """
     
     def __init__(self, fName, M0):
-        """ Initializing the potential
+        """ Initializing the potential according to the model of van den Bosch.
         
             Input:
                 fName   (string)
@@ -69,7 +69,6 @@ class bosch(object):
                 data:   array containing the properties of the dark matter 
                         halo (2D numpy array).
         """
-        
         with open(self.fName) as f:                     # Opening data
             data = np.loadtxt((x.replace('     ', '  ') for x in f))
         return data

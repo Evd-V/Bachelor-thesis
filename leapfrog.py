@@ -1,11 +1,9 @@
 import numpy as np
 from scipy.constants import G
 from scipy.interpolate import interp1d
-import astropy.units as u
 from matplotlib.pyplot import figure, show, cm
 
 import general as ge
-import nfw_profile as nf
 
 
 def leap_frog(func, dt, x0, vh, *args):
@@ -63,7 +61,7 @@ def alt_leap(func, dt, x0, v0, *args):
     return xN, vN
 
 
-def execute_leap(func, tRange, p0, v0, z, M, *args):
+def execute_leap(func, tRange, p0, v0, z, *args):
     """ Execute the leapfrog integration method by calling the iterative 
         scheme in a loop. Here the "alternative" leapfrog method is used 
         as it does not require the initial velocity at t=i-1/2. This 
@@ -81,7 +79,6 @@ def execute_leap(func, tRange, p0, v0, z, M, *args):
                     the time of the first entry of tRange (3D numpy array).
             z:      Redshift for a given time at which the equation will be 
                     solved (numpy array).
-            M:      Mass of the dark matter halo at redshift z (numpy array).
         
         Returns:
             pV:     The 3D position vector at the times given by tRange 
@@ -98,12 +95,12 @@ def execute_leap(func, tRange, p0, v0, z, M, *args):
     vV[0] = v0                                      # Initial velocity vector
     
     for i in range(len(tSteps)-1):
-        pV[i+1], vV[i+1] = alt_leap(func, tSteps[i], pV[i], vV[i], z, M, *args)
+        pV[i+1], vV[i+1] = alt_leap(func, tSteps[i], pV[i], vV[i], z, *args)
     
     return pV, vV
 
 
-def time_leap(func, tRange, p0, v0, z, M, *args):
+def time_leap(func, tRange, p0, v0, z, *args):
     """ Execute the leapfrog integration method by calling the iterative 
         scheme in a loop. Here the "alternative" leapfrog method is used 
         as it does not require the initial velocity at t=i-1/2. This 
@@ -122,8 +119,6 @@ def time_leap(func, tRange, p0, v0, z, M, *args):
                     the time of the first entry of tRange (3D numpy array).
             z:      Redshifts corresponding to the time range at which the 
                     equation will be solved (numpy array).
-            M:      Mass of the dark matter halo at redshifts z 
-                    (numpy array).
         
         Returns:
             pV:     The 3D position vector at the times given by tRange 
@@ -144,15 +139,13 @@ def time_leap(func, tRange, p0, v0, z, M, *args):
         newZ = np.linspace(min(z), max(z), len(tRange))
         interpZ = interp1d(ge.lin_func(z), z)
         
-        M = nf.find_m_z(z, M, newZ, *args)          # Full mass range
         z = interpZ(newZ)                           # Full redshift range
     
     pV[0] = p0                                      # Initial position vector
     vV[0] = v0                                      # Initial velocity vector
     
     for i in range(len(tSteps)-1):
-        pV[i+1], vV[i+1] = alt_leap(func, tSteps[i], pV[i], vV[i], z[i], M[i], 
-                                    *args)
+        pV[i+1], vV[i+1] = alt_leap(func, tSteps[i], pV[i], vV[i], z[i], *args)
     
     return pV, vV
 
