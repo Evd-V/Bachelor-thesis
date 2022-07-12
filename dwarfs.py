@@ -485,7 +485,7 @@ def main():
     eDraB = draco.energy("Bosch", timeRange, draBP[:-1], draBV[:-1])
     
             # Time independent
-    draSP, draSV = draco.orbit_tindep(timeRange, fZhao)[2:]
+    draSP, draSV = draco.orbit_tindep(timeRange)[2:]
     eKinS, ePotS = draco.energy_tindep(draSP[:-1], draSV[:-1])
     # staticProp = draco.orbit_properties(draSP[:-1])
 
@@ -510,7 +510,7 @@ def main():
     scuZP, scuZV, scuBP, scuBV = sculptor.pos_vel(timeRange)
     scuTime = (3.4, 6.2)
 
-    scuSP, scuSV = sculptor.orbit_tindep(timeRange, fZhao)[2:]
+    scuSP, scuSV = sculptor.orbit_tindep(timeRange)[2:]
 
     scuPlus = calculate_prop("Sculptor", fZhao, fBosch, sig="+")
     scuPZP, scuPZV = scuPlus.pos_vel(timeRange)[0:2]
@@ -528,7 +528,7 @@ def main():
     car1Time = (5, 6)
     car2Time = (9, 12.75)
 
-    carSP, carSV = carina.orbit_tindep(timeRange, fZhao)[2:]
+    carSP, carSV = carina.orbit_tindep(timeRange)[2:]
 
             # Derivatives
     histCar, derivCar = dv.take_log_deriv("Carina")
@@ -543,7 +543,7 @@ def main():
     ursZP, ursZV, ursBP, ursBV = ursaMin.pos_vel(timeRange)
     ursTime = (2, 4.4)
 
-    ursSP, ursSV = ursaMin.orbit_tindep(timeRange, fZhao)[2:]
+    ursSP, ursSV = ursaMin.orbit_tindep(timeRange)[2:]
 
             # Derivatives
     histUrsa, derivUrsa = dv.take_deriv("Ursa Minor")
@@ -694,7 +694,7 @@ def main():
 
     # fig.suptitle("Dashed = Zhao (2009), solid = van den Bosch (2014)", fontsize=22)
     fig.tight_layout()
-    fig.savefig("Sculptor_sigma_orbit.png")
+    # fig.savefig("Sculptor_sigma_orbit.png")
 
     show()
 

@@ -56,6 +56,7 @@ class zhao(object):
         
         data = self.load_data()
         h0 = 0.6766
+        t0 = data[:,-1][0] / h0
         
             # Unpacking data
         self.red = data[:,0]                            # Redshift
@@ -64,7 +65,7 @@ class zhao(object):
         self.virR = 3.0857e22 * data[:,4] / h0          # Virial radius
         self.rhoS = ge.conv_inv_dens(data[:,7]/1e18) * h0 * h0   # rho_s
         self.rS = 3.0857e22 * data[:,8] / h0                     # r_s
-        self.time = data[:,-1] / h0                     # Age of Universe
+        self.time = t0 - data[:,-1] / h0                     # Age of Universe
     
     
     def load_data(self):
