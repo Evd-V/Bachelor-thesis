@@ -1,0 +1,8 @@
+The files in this archive contain the star formation rate in different bins in age and [Fe/H], for the Carina dSph. The star formation rates are in units of Msun/yr formed over the duration of each bin. Therefore, to get the total mass in stars formed in a bin, you need to multiply the SFR with the duration of the bin (in years). 
+
+The SFRs were obtained on a 2d grid of age and metallicity. Then the values were projected onto either age or metallicity to obtain the files you receive now. I can also send the full 2D information if you wish it. The units of SFR are Msun/year when given in terms of age and Msun/dex when given in terms of metallicity. For this reason, values in terms of metallicity are much greater (integrated over 14Gyr of evolution). 
+
+The extent of each of the 3 annuli used is given below:
+annul1 = 0.000-0.150 deg away from the centre
+annul2 = 0.150-0.300 deg
+annul3 = 0.300-0.480 deg
