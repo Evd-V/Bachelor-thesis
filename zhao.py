@@ -113,10 +113,6 @@ class zhao(object):
             Input:
                 zV:     redshift(s) at which r_s and rho_s will be determined
                         (float or numpy array).
-                *args:  Cosmological parameter values H0 and omegaM0
-                        The input should be the same as used in the 
-                        generation of the data using the code of van 
-                        den Bosch. Default: H0=67.66, omegaM0=0.3089.
             
             Returns:
                 Value of r_s at zV (float or numpy array).
@@ -134,10 +130,6 @@ class zhao(object):
                         is determined (float or numpy array).
                 r:      the distances from the center of the halo at which 
                         the mass will be calculated (float or numpy array).
-                *args:  Cosmological parameter values H0 and omegaM0
-                        The input should be the same as used in the 
-                        generation of the data using the code of van 
-                        den Bosch. Default: H0=67.66, omegaM0=0.3089.
 
             Returns:
                 mass as function of r and z (float or numpy array (1D or 2D))
@@ -166,7 +158,7 @@ class zhao(object):
         return 4 / (x * np.power(1+x, 2))
     
     
-    def nfw_profile(self, zV, r, *args):
+    def nfw_profile(self, zV, r):
         """ A time dependent NFW density profile. With the input of the 
             desired redshift value(s), a time dependent density profile 
             as function of radius is output. r_s and rho_s are determined 
@@ -177,10 +169,6 @@ class zhao(object):
                         is computed (float or numpy array).
                 r:      distance from the center of the halo (float or 
                         numpy array).
-                *args:  Cosmological parameter values H0 and omegaM0
-                        The input should be the same as used in the 
-                        generation of the data using the code of van 
-                        den Bosch. Default: H0=67.66, omegaM0=0.3089.
 
             Returns:
                 time dependent NFW profile (float or numpy array(1D or 2D))
@@ -203,7 +191,7 @@ class zhao(object):
         
         return 4 * np.asarray(frac)
     
-    def pot_nfw(self, zV, r, *args):
+    def pot_nfw(self, zV, r):
         """ The gravitational potential corresponding to the NFW 
             density profile. This is obtained by solving the Poisson 
             equation. For the NFW profile there exists an analytical 
@@ -214,10 +202,6 @@ class zhao(object):
                         computed (float or numpy array).
                 r:      distance from the center of the halo (float or 
                         numpy array).
-                *args:  Cosmological parameter values H0 and omegaM0
-                        The input should be the same as used in the 
-                        generation of the data using the code of van 
-                        den Bosch. Default: H0=67.66, omegaM0=0.3089.
 
             Returns:
                 gravitational potential (float or numpy array(1D or 2D))
