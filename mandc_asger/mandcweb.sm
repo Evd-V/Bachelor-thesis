@@ -75,7 +75,7 @@ mc      #mass denpendence of concentration at given redshift
         ctype 0 ltype 0
 
 common1
-        data mandcoutput.1215
+        data mandcoutput.12106
         lines 1 1 read { ispec 1 nbin1 2 }
         lines 2 5000
         read { ztmp 1 mt 2 ct 3 mstmp 7 m200ct 11 c200ct 12 m200mt 14 c200mt 15 }
