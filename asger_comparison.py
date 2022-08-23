@@ -24,7 +24,7 @@ def load_asger(fName="haloevol.dat"):
     brackets = np.log(1+asConc) - asConc / (1 + asConc)
 
     asRhoS = asVirM * M_sun.value / (const * brackets)  # Density at r_s
-    rhoSUnits = ge.conv_dens(asRhoS)
+    rhoSUnits = ge.conv_dens(asRhoS)             # SI units
 
     return asTime, asRed, asVirM, asConc, asVirR, asVirR/asConc, rhoSUnits
 
