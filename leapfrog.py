@@ -145,9 +145,48 @@ def time_leap(func, tRange, p0, v0, z, *args):
     vV[0] = v0                                      # Initial velocity vector
     
     for i in range(len(tSteps)-1):
-        pV[i+1], vV[i+1] = alt_leap(func, tSteps[i], pV[i], vV[i], z[i], *args)
-    
+        # pV[i+1], vV[i+1] = alt_leap(func, tSteps[i], pV[i], vV[i], z[i], *args)
+        pV[i+1], vV[i+1] = runga_kuta_nystrom(func, tSteps[i], pV[i], vV[i], z[i], *args)
+
     return pV, vV
+
+def runga_kuta_nystrom(func, h, x0, v0, *args):
+    """ Runge-kuta solver for first order differential equations. 
+
+        Input:
+            func:   Function that has to be integrated, with as first 
+                    argument time, as second the integration variable 
+                    (e.g. f(t, y)) (function).
+            h:      Step size for iterative scheme (float).
+            t0:     Initial time (float).
+            y0:     Initial value of y at time t=i (float).
+            *args:  Arguments passed to the function.
+    
+        Returns:
+            yN:     The value of y at time t=i+1 (float).
+    """
+    
+    k1 = func(x0, *args)                            # First coefficient
+    
+    v1 = v0 + h * k1 / 2
+    # x1 = x0 + .25 * h * (v0 + v1)                   # New evaluation point
+    x1 = x0 + h * (.5 * h * k1 + 4 * v0 + 2 * v1) / 12
+    k2 = func(x1, *args)                      # Second coefficient
+    
+    v2 = x0 + h * k2 / 2                                # New evaluation point
+    # x2 = x0 + .25 * h * (v0 + v2)
+    x2 = x0 + h * (.5 * h * k1 + 4 * v0 + 2 * v2) / 12
+    k3 = func(x2, *args)                      # Third coefficient
+    
+    v3 = x0 + h * k3                                    # New evaluation point
+    # x3 = x0 + .5 * h * (v0 + v3)
+    x3 = x0 + h * (h * k1 + 4 * v0 + 2 * v3) / 6
+    k4 = func(x3, *args)                        # Fourth coefficient
+    
+    xN = x0 + h * (v0 + 2*v1 + 2*v2 + v3) / 6           # Next y value
+    vN = v0 + h * (k1 + 2*k2 + 2*k3 + k4) / 6
+
+    return xN, vN
 
 
 def plot_mult_3d(pos, linestyles, labels, cmap=cm.cool, step=10, saveFig=None):
@@ -257,4 +296,3 @@ def plot_orbit_3d(pos, cmap=cm.cool, step=10, saveFig=None):
     
     if saveFig: fig.savefig(str(saveFig))
     else: show()
-
