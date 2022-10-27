@@ -60,7 +60,7 @@ def obtain_pos(ra, dec, dm, pmRa, pmDec, radVel):
     return i
 
 
-def transf_frame(i, rSun=8.178, U=10, V=11, W=7, vLSR=229):
+def transf_frame(i, rSun=8.122, U=10, V=11, W=7, vLSR=229):
     """ Transform position from heliocentric to galactocentric coordinates
 
         Input:
