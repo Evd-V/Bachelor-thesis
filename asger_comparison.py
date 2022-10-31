@@ -110,4 +110,3 @@ def plot_comparison(varX, varY, saveFig=None, *args):
     show()
 
 plot_comparison("Radius", "Rs", saveFig="rs_rvir_comp.png")
-

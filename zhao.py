@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.constants import G
 from scipy.interpolate import interp1d
+from astropy.constants import kpc
 
 import general as ge
 
@@ -62,10 +63,10 @@ class zhao(object):
         self.red = data[:,0]                            # Redshift
         self.mass = data[:,1] / h0                      # Virial mass
         self.conc = data[:,2]                           # Concentration
-        self.virR = 3.0857e22 * data[:,4] / h0          # Virial radius
+        self.virR = 1e3 * kpc.value * data[:,4] / h0    # Virial radius
         self.rhoS = ge.conv_inv_dens(data[:,7]/1e18) * h0 * h0   # rho_s
-        self.rS = 3.0857e22 * data[:,8] / h0                     # r_s
-        self.time = t0 - data[:,-1] / h0                     # Age of Universe
+        self.rS = 1e3 * kpc.value * data[:,8] / h0      # r_s
+        self.time = t0 - data[:,-1] / h0                # Age of Universe
     
     
     def load_data(self):
@@ -120,6 +121,7 @@ class zhao(object):
         """
         zInd = self.find_z_ind(zV)                      # Correct z index
         return self.rS[zInd], self.rhoS[zInd]
+    
     
     def mass_at_r(self, zV, r):
         """ The mass of the dark matter halo as function of distance from the 

@@ -465,9 +465,9 @@ def main():
     timeRange = np.linspace(-ge.conv_year_sec(1e7), -ge.conv_year_sec(13.5e9), int(1e3))
     yearRange = ge.conv_sec_year(timeRange) / 1e9                   # Time in Gyr
 
-    t0, tS, tF = 13.8, 1e-2, 13.5
-    adjRange = np.linspace(t0-tF, t0-tS, int(1e3))[::-1]            # Time in Gyr
+    t0, tS, tF = 13.8, 1e-3, 13.5
 
+    adjRange = np.linspace(t0-tF, t0-tS, int(1e3))[::-1]            # Time in Gyr
     
         # Draco
     draco = calculate_prop("Draco", fZhao, fBosch)
@@ -498,12 +498,12 @@ def main():
     # print(f"Apocenter = {staticProp[1]}")
     # print(f"Eccentricity = {staticProp[2]}")
 
-    # minInd = [ge.find_closest(adjRange, dT)[0] for dT in draTime]
-    # minVal = min(draZP[minInd[1]:minInd[0]])
-    # anotherInd = ge.find_closest(draZP, minVal)[0]
+    minInd = [ge.find_closest(adjRange, dT)[0] for dT in draTime]
+    minVal = min(draZP[minInd[1]:minInd[0]])
+    anotherInd = ge.find_closest(draZP, minVal)[0]
 
-    # print(ge.conv_m_kpc(minVal))
-    # print(adjRange[anotherInd])
+    print(ge.conv_m_kpc(minVal))
+    print(adjRange[anotherInd])
 
         # Sculptor
     sculptor = calculate_prop("Sculptor", fZhao, fBosch)
@@ -579,18 +579,20 @@ def main():
 
         # Time independent
     # ax.plot(adjRange[:-1], ge.conv_m_kpc(draSP[:-1]), label="$t$ indep.", 
-    #         ls="-.", lw=2, color="magenta")
+    #         ls="--", lw=2, color="red")
     # ax3.plot(adjRange[:-1], draSV[:-1]/1e3, label="Velocity", 
     #         ls="--", lw=2, color="red")
 
         # Time dependent
-    ax.plot(adjRange[:-1], ge.conv_m_kpc(scuMZP[:-1]), color="magenta", ls="-.", 
-            label=r"$-\sigma$", lw=2, zorder=2.7)
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(scuMZP[:-1]), color="magenta", ls="-.", 
+    #         label=r"$-\sigma$", lw=2, zorder=2.7)
 
     # ax.plot(adjRange[:-1], ge.conv_m_kpc(draBP[:-1]), label="van den Bosch (2014)",
     #         color="red", lw=2, zorder=3)
-    # ax.plot(adjRange[:-1], ge.conv_m_kpc(draZP[:-1]), color="navy", ls="-", 
-    #         label="Normal", lw=2, zorder=2.7)
+    ax.plot(adjRange[:-1], ge.conv_m_kpc(draZP[:-1]), color="navy", ls="-", 
+            label="Zhao (2009)", lw=2, zorder=2.7)
+    # ax.plot(tT2[::-1], ge.conv_m_kpc(draZP[:-1]), color="navy", ls="-", 
+    #         label="Zhao (2009)", lw=2, zorder=2.7)
     # ax.axvline(draTime[0], color="black", ls="-.", lw=2)
     # ax.axvline(draTime[1], color="black", ls="-.", lw=2)
     # ax.axvspan(draTime[0], draTime[1], color="lightgreen", alpha=.3)
@@ -604,15 +606,15 @@ def main():
     # ax.axvspan(ursTime[0], ursTime[1], color="lightgreen", alpha=.3)
 
         # Sculptor
-    ax.plot(adjRange[:-1], ge.conv_m_kpc(scuZP[:-1]), color="navy", lw=2, 
-            label="Normal")
-    # ax.plot(adjRange[:-1], ge.conv_m_kpc(scuSP[:-1]), ls=":", color="navy")
-    ax.axvline(scuTime[0], color="black", ls="-.", lw=2)
-    ax.axvline(scuTime[1], color="black", ls="-.", lw=2)
-    ax.axvspan(scuTime[0], scuTime[1], color="lightgreen", alpha=.3)
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(scuZP[:-1]), color="navy", lw=2, 
+    #         label="Normal")
+    # # ax.plot(adjRange[:-1], ge.conv_m_kpc(scuSP[:-1]), ls=":", color="navy")
+    # ax.axvline(scuTime[0], color="black", ls="-.", lw=2)
+    # ax.axvline(scuTime[1], color="black", ls="-.", lw=2)
+    # ax.axvspan(scuTime[0], scuTime[1], color="lightgreen", alpha=.3)
 
-    ax.plot(adjRange[:-1], ge.conv_m_kpc(scuPZP[:-1]), color="red", ls="--", 
-            label=r"$+\sigma$", lw=2, zorder=2.7)
+    # ax.plot(adjRange[:-1], ge.conv_m_kpc(scuPZP[:-1]), color="red", ls="--", 
+    #         label=r"$+\sigma$", lw=2, zorder=2.7)
 
         # Carina
     # ax.plot(adjRange[:-1], ge.conv_m_kpc(carZP[:-1]), color="teal", lw=2, 
@@ -658,6 +660,10 @@ def main():
     ax2.plot(adjRange, zhaoIntR, color="slateblue", lw=2, ls=":", 
              label=r"$r_\Delta$")
     # ax2.plot(adjRange, tIndepR, color="slateblue", ls=":", label=r"$r_\Delta$ MW")
+
+    # np.savetxt("Evan_Car.txt", np.array([adjRange[:-1], ge.conv_m_kpc(carZP[:-1])]))
+    # np.savetxt("Evan_Urs.txt", np.array([adjRange[:-1], ge.conv_m_kpc(ursZP[:-1])]))
+    # np.savetxt("Evan_Scu.txt", np.array([adjRange[:-1], ge.conv_m_kpc(scuZP[:-1])]))
 
     ax.set_xlabel(r"$t_0 - t$ (Gyr)", fontsize=22)
     ax.set_ylabel(r"$r$ (kpc)", fontsize=22)

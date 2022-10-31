@@ -72,7 +72,8 @@ class dwarf_galaxy(object):
         self.pos = pos                          # 3D position
         self.vel = vel                          # 3D velocity
         
-        self.t0 = 13.78e9                       # Age of Universe
+        self.t0 = 13.8e9                       # Age of Universe
+        
         self.M0 = M0                            # Initial halo mass
         
             # Creating profile depending on model
@@ -196,7 +197,7 @@ class dwarf_galaxy(object):
         
             # Integrating the orbit
         timePos, timeVel = lf.time_leap(self.diff_pot, tRange, self.pos,
-                                        self.vel, corrRed)
+                                        self.vel, corrRed)                      
         
         return timePos, timeVel
     
@@ -297,9 +298,8 @@ def main():
     """ Main function that will be executed """
     
         # File names for models
-    pathName = "~/Documents/Evan/Studie/Year 3/Bachelor Thesis/"
-    fZhao = pathName + "mandc_m125_final/mandcoutput.m125_final"
-    fBosch = pathName + "getPWGH/PWGH_median.dat"    
+    fZhao = "mandc_m125_final/mandcoutput.m125_final"
+    fBosch = "getPWGH/PWGH_median.dat"    
     
         # Initial conditions Draco I dwarf
     pmRaDra = 0.039 * u.mas/u.yr                        # RA in mas/yr
@@ -322,10 +322,10 @@ def main():
     vStart = ic.conv_vel_frame(vSpher, pSpher)      # Starting velocity in m/s
 
         # Time integration range
-    tS = 1e-2                   # Start integration time (Gyr)
+    tS = 1e-3                   # Start integration time (Gyr)
     tF = 13.2                   # End integration time (Gyr)
     t0 = 13.8                   # Age of Universe (Gyr)
-    
+
         # Time in s
     timeRange = np.linspace(-ge.conv_year_sec(tS*1e9), -ge.conv_year_sec(tF*1e9), 
                             int(1e3))
@@ -368,8 +368,8 @@ def main():
     draZMass, draBMass = dracoZhao.mass[:cutZInd+1], dracoBosch.mass[:cutBInd+1]
     draZRad, draBRad = dracoZhao.virR[:cutZInd+1], dracoBosch.virR[:cutBInd+1]
 
-    findDraZM = draZProf.virial_mass()[:cutZInd+1]
-    findDraBM = draBProf.virial_mass()[:cutBInd+1]
+    # findDraZM = draZProf.virial_mass()[:cutZInd+1]
+    # findDraBM = draBProf.virial_mass()[:cutBInd+1]
 
 
     indAlpha = ge.find_closest(draZMass, 0.5*1.25e12)[0]
