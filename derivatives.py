@@ -9,16 +9,22 @@ class sfh_dwarfs(object):
 
         Attributes:
 
-            bla
+            dataDict:   Dictionary containing the SFH of the 4 dwarf 
+                        galaxies: Draco, Ursa Minor, Sculptor and 
+                        Carina. The values in the dictionary are a tuple 
+                        containing the time values and the SFRs at the 
+                        corresponding times.
     """
 
     def __init__(self) -> None:
-        
-            # Loading the data
-        self.tDraco, self.psiDraco = self.hist_draco()
-        self.tUrsa, self.psiUrsa = self.hist_ursa()
-        self.tScul, self.psiScul = self.hist_sculptor()
-        self.tCari, self.psiCari = self.accurate_carina()
+        """ Initializing the SFHs 
+
+            Input:
+                -
+            
+            Returns:
+                sfh_dwarfs  (object)
+        """
     
                 # Dictionary containing histogram data
         self.dataDict = {
@@ -105,12 +111,14 @@ class sfh_dwarfs(object):
 
         return 14 - timeVals, totSFH
 
+
     def diff_complete(self, y, t):
         """ Differentiate function, 0 if delta t = 0. """
         deltaT = t[1:] - t[:-1]
         return np.where(deltaT == 0, 0, (y[1:] - y[:-1]) / deltaT)
 
-    def take_deriv(self, name):
+
+    def take_deriv(self, name, norm=True):
         """ Take derivative of the SFH for one of four dwarf 
             galaxies: Draco, Ursa Minor, Sculptor or Carina.
 
@@ -130,6 +138,8 @@ class sfh_dwarfs(object):
         
         dwarfData = self.dataDict[name]             # Picking dwarf
         tVals, psiVals = dwarfData[0], dwarfData[1] # Unpacking
+
+        if norm: psiVals /= max(psiVals)            # Normalizing
 
         dT = (tVals[1:] + tVals[:-1]) * .5          # Time for derivatives
 
@@ -176,17 +186,42 @@ class sfh_dwarfs(object):
 
         return np.append([edges1], [final])
 
-    def norm_hist(self, name):
-        """ Normalize histogram to compare dwarf galaxies with each other 
-        """
+
+    def hist_interp(self, name):
+        """ Cubic spline interpolation for histogram data """
+
+        # dwarfData = self.dataDict[name]             # Selecting dwarf
+        # tVals, psiData = dwarfData[0], dwarfData[1] # Unpacking data
 
         data = self.take_deriv(name)        # Retrieve data of dwarf
         tVals, histVals = data[0]           # SFH itself
         dT, derivVals = data[1]             # Derivative of the SFH
 
-        return (histVals/max(histVals), derivVals/max(derivVals))
+        histEdges = self.stair_edges(dT, tVals)  # Edges of histogram
 
-    def plot_hist(self, name, saveFig=None):
+        spline = CubicSpline(tVals, histVals)
+        tRange = np.linspace(min(tVals), max(tVals), 100)
+
+            # Plotting
+        fig = figure(figsize=(14,7))
+        ax = fig.add_subplot(1,2,1)
+        ax2 = fig.add_subplot(1,2,2)
+
+        ax.stairs(histVals, histEdges, color="navy", lw=2, zorder=2.9)
+        ax.scatter(tVals, histVals, marker="o", color="navy", s=100, alpha=.3, zorder=3)
+        ax.plot(tRange, spline(tRange), color="red", zorder=2.8)
+
+        ax2.plot(dT, derivVals, color="navy", marker="o", ms=10, lw=2)
+        ax2.plot(tRange, spline(tRange, 1), color="green")
+
+        ax.grid(zorder=2)
+        ax2.grid()
+
+        show()
+
+    
+
+    def plot_hist(self, name, norm=True, saveFig=None):
         """ Plot histogram of SFH for given dwarf galaxy along with the 
             derivative of the SFH.
 
@@ -197,10 +232,12 @@ class sfh_dwarfs(object):
                 -
         """
 
-        data = self.take_deriv(name)        # Retrieve data of dwarf
+        data = self.take_deriv(name, norm=norm)  # Retrieve data of dwarf
         tVals, histVals = data[0]           # SFH itself
         dT, derivVals = data[1]             # Derivative of the SFH
 
+        if norm: histVals /= max(histVals)
+        
         histEdges = self.stair_edges(dT, tVals)  # Edges of histogram
 
         matplotlib.rcParams['font.family'] = ['Times']
@@ -232,20 +269,36 @@ class sfh_dwarfs(object):
 
         show()
     
-    def plot_all_dwarfs(self):
-        """ Plot all dwarfs """
+    def plot_hist_dwarfs(self, logD=False, *args) -> None:
+        """ Plot the SFH histogram data of the 4 dwarfs """
+        return None
+
+    def plot_deriv_dwarfs(self, logD=False, *args):
+        """ Plot the derivatives of the histogram of the 4 dwarf galaxies.
+
+            Input:
+                logD:   use logarithm histogram values (Boolean)
+
+                args:
+                    norm:   use normalized histogram data (Boolean)
+            
+            Returns:
+                Plot showing the derivatives of the dwarf galaxies
+        """
 
             # Initialize plot properties for 4 dwarfs
         names = ["Draco", "Ursa Minor", "Sculptor", "Carina"]
         colors = ["navy", "magenta", "red", "teal"]
         lineStyles = ["-", "--", "-.", ":"]
         markers = ["o", "x", "+", "*"]
-        
-            # Take derivative of dwarfs
-        derivDwarfs = [self.take_deriv(name)[1] for name in names]
 
-            # Uncomment for derivatives of logarithm
-        # derivDwarfs = [take_log_deriv(name)[1] for name in names]
+        if logD:                    # Derivatives of logarithm
+            derivDwarfs = [self.take_log_deriv(name, *args)[1] 
+                           for name in names]
+        
+        else:                       # Normal derivatives
+            derivDwarfs = [self.take_deriv(name, *args)[1] 
+                           for name in names]
 
         matplotlib.rcParams['font.family'] = ['Times']
 
@@ -276,7 +329,10 @@ def main():
     """ Main function that will be executed """
 
     sfhClass = sfh_dwarfs()     # Initializing class for SHFs
-    sfhClass.plot_all_dwarfs()
+
+    # sfhClass.plot_hist("Sculptor")
+    # sfhClass.plot_all_dwarfs()
+    sfhClass.hist_interp("Draco")
 
 if __name__ == "__main__":    
     main()
